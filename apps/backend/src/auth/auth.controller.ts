@@ -26,8 +26,8 @@ export class AuthController {
   @ApiQuery({ name: 'state', required: false, description: 'OAuth state parameter' })
   async githubAuth(@Query('state') state?: string, @Res() res?: Response) {
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=repo,user:email&state=${state || ''}`;
-    
     if (res) {
+      console.log('redirecting to', githubAuthUrl);
       return res.redirect(githubAuthUrl);
     }
     
@@ -44,7 +44,9 @@ export class AuthController {
     @Res() res?: Response,
   ) {
     try {
+      console.log('code is getting here');
       const result = await this.authService.validateGithubCode(code);
+      console.log('result', result);
       
       if (res) {
         // Set JWT token as httpOnly cookie
@@ -62,6 +64,7 @@ export class AuthController {
       return result;
     } catch (error) {
       if (res) {
+        console.log('error', error);
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/error?error=${encodeURIComponent(error.message)}`);
       }
       throw error;

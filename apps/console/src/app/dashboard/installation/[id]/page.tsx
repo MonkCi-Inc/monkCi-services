@@ -16,34 +16,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-interface Repository {
-  id: number;
-  name: string;
-  full_name: string;
-  private: boolean;
-  description?: string;
-  language?: string;
-  archived: boolean;
-  disabled: boolean;
-  fork: boolean;
-  size: number;
-  stargazers_count: number;
-  watchers_count: number;
-  forks_count: number;
-  open_issues_count: number;
-  created_at: string;
-  updated_at: string;
-  pushed_at: string;
-}
-
-interface Installation {
-  id: number;
-  accountLogin: string;
-  accountType: 'User' | 'Organization';
-  permissions: Record<string, string>;
-  repositorySelection: 'all' | 'selected';
-}
+import { apiService, Repository, Installation } from "@/lib/api";
 
 export default function InstallationPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -56,31 +29,13 @@ export default function InstallationPage({ params }: { params: { id: string } })
   useEffect(() => {
     const fetchInstallationData = async () => {
       try {
-        // Get installation token and repositories
-        const tokenResponse = await fetch('/api/auth/installation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ installationId: parseInt(params.id) }),
-        });
-
-        if (!tokenResponse.ok) {
-          throw new Error('Failed to get installation data');
-        }
-
-        const data = await tokenResponse.json();
-        setRepositories(data.repositories || []);
+        // Get installation details
+        const installationData = await apiService.getInstallation(params.id);
+        setInstallation(installationData);
         
-        // For now, we'll create a mock installation object
-        // In a real app, you'd get this from the user session
-        setInstallation({
-          id: parseInt(params.id),
-          accountLogin: 'mock-account',
-          accountType: 'User',
-          permissions: data.permissions || {},
-          repositorySelection: 'all',
-        });
+        // Get repositories for this installation
+        const reposData = await apiService.getRepositories(params.id);
+        setRepositories(reposData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -98,16 +53,11 @@ export default function InstallationPage({ params }: { params: { id: string } })
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const response = await fetch(`/api/installations/${params.id}/sync`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRepositories(data.repositories || []);
-      } else {
-        throw new Error('Failed to sync repositories');
-      }
+      await apiService.syncRepositories(params.id);
+      
+      // Refresh repositories after sync
+      const reposData = await apiService.getRepositories(params.id);
+      setRepositories(reposData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sync failed');
     } finally {
@@ -220,12 +170,12 @@ export default function InstallationPage({ params }: { params: { id: string } })
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {repositories.map((repo) => (
-              <Card key={repo.id} className="hover:shadow-lg transition-shadow">
+              <Card key={repo._id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-lg">{repo.name}</CardTitle>
-                      <CardDescription>{repo.full_name}</CardDescription>
+                      <CardDescription>{repo.fullName}</CardDescription>
                     </div>
                     <div className="flex flex-col items-end space-y-1">
                       <Badge variant={repo.private ? "secondary" : "outline"}>
@@ -249,25 +199,27 @@ export default function InstallationPage({ params }: { params: { id: string } })
                     
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Language:</span>
-                      <span className="font-medium">{repo.language || 'N/A'}</span>
+                      <span className="font-medium">{repo.language || 'Unknown'}</span>
                     </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Last updated:</span>
-                      <span>{new Date(repo.updated_at).toLocaleDateString()}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Size:</span>
-                      <span className="font-medium">{(repo.size / 1024).toFixed(1)} MB</span>
-                    </div>
-
+                    
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Stars:</span>
-                      <span className="font-medium">{repo.stargazers_count}</span>
+                      <span className="font-medium">{repo.stargazersCount}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Forks:</span>
+                      <span className="font-medium">{repo.forksCount}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Last updated:</span>
+                      <span className="font-medium">
+                        {new Date(repo.updatedAt).toLocaleDateString()}
+                      </span>
                     </div>
 
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 pt-2">
                       <Button size="sm" className="flex-1">
                         <Play className="h-4 w-4 mr-2" />
                         View Pipelines
@@ -282,70 +234,6 @@ export default function InstallationPage({ params }: { params: { id: string } })
             ))}
           </div>
         )}
-
-        {/* Stats Section */}
-        <div className="mt-12">
-          <h3 className="text-xl font-semibold mb-6">Installation Stats</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <GitBranch className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{repositories.length}</p>
-                    <p className="text-sm text-muted-foreground">Repositories</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {repositories.filter(r => !r.archived && !r.disabled).length}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Active Repos</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">0</p>
-                    <p className="text-sm text-muted-foreground">Running Jobs</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center">
-                    <XCircle className="h-6 w-6 text-orange-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">0</p>
-                    <p className="text-sm text-muted-foreground">Failed Jobs</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
       </main>
     </div>
   );

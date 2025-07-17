@@ -59,7 +59,7 @@ npm install
 2. Create a new GitHub App with the following settings:
    - **App name**: Monk CI (or your preferred name)
    - **Homepage URL**: `http://localhost:3000`
-   - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
+   - **Authorization callback URL**: `http://localhost:3001/auth/github/callback`
    - **Webhook**: Disabled (for now)
    - **Permissions**:
      - Repository permissions:
@@ -92,7 +92,10 @@ cp env.example .env.local
 Edit `.env.local`:
 
 ```env
-# GitHub App Configuration
+# Frontend Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# GitHub App Configuration (for backend)
 GITHUB_CLIENT_ID=your_github_app_client_id
 GITHUB_CLIENT_SECRET=your_github_app_client_secret
 GITHUB_APP_ID=your_github_app_id
@@ -100,10 +103,6 @@ GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nYour GitHub App private key
 
 # JWT Configuration (generate a secure random string)
 JWT_SECRET=your_jwt_secret_key_here_make_it_long_and_random
-
-# Application URLs
-NEXTAUTH_URL=http://localhost:3000
-GITHUB_REDIRECT_URI=http://localhost:3000/api/auth/github/callback
 
 # MongoDB Configuration
 MONGODB_URI=mongodb://localhost:27017/monkci
@@ -190,7 +189,7 @@ Visit `http://localhost:3000` to see the application.
 ### 2. GitHub OAuth
 - User is redirected to GitHub's OAuth authorization page
 - User authorizes the GitHub App
-- GitHub redirects back to `/api/auth/github/callback`
+- GitHub redirects back to `http://localhost:3001/auth/github/callback` (NestJS backend)
 
 ### 3. Database Storage
 - User data is stored/updated in MongoDB
@@ -199,21 +198,24 @@ Visit `http://localhost:3000` to see the application.
 - JWT token is created with user data
 
 ### 4. Dashboard Access
-- User is redirected to `/dashboard`
+- User is redirected to `/dashboard` (frontend)
 - Dashboard displays user's GitHub installations from database
 - User can select installations to manage CI/CD
 
 ## API Endpoints
 
-### Authentication
-- `GET /api/auth/github` - Initiate GitHub OAuth
-- `GET /api/auth/github/callback` - Handle OAuth callback and sync data
-- `GET /api/auth/me` - Get current user session from database
-- `POST /api/auth/logout` - Logout user
+### Authentication (NestJS Backend - Port 3001)
+- `GET /auth/github` - Initiate GitHub OAuth
+- `GET /auth/github/callback` - Handle OAuth callback and sync data
+- `GET /auth/me` - Get current user session from database
+- `POST /auth/logout` - Logout user
 
-### GitHub App
-- `POST /api/auth/installation` - Generate installation access token and sync repositories
-- `POST /api/installations/[id]/sync` - Manually sync repositories for an installation
+### GitHub App (NestJS Backend - Port 3001)
+- `POST /auth/installation` - Generate installation access token and sync repositories
+- `POST /installations/:id/sync` - Manually sync repositories for an installation
+- `GET /installations` - Get user's installations
+- `GET /installations/:id` - Get installation details
+- `GET /installations/:id/repositories` - Get repositories for an installation
 
 ## Database Operations
 
@@ -243,20 +245,30 @@ Visit `http://localhost:3000` to see the application.
 
 ## File Structure
 
+### Frontend (Next.js - Port 3000)
 ```
-src/
+apps/console/src/
 ├── app/
-│   ├── api/auth/           # Authentication API endpoints
-│   ├── api/installations/  # Installation management endpoints
 │   ├── auth/               # Authentication pages
 │   ├── dashboard/          # Dashboard pages
 │   └── page.tsx           # Landing page
 ├── components/             # UI components
 ├── lib/
 │   ├── auth.ts            # Authentication utilities
-│   ├── db.ts              # Database models and operations
-│   └── mongodb.ts         # MongoDB connection
+│   └── api.ts             # API service for backend communication
 └── middleware.ts          # Route protection
+```
+
+### Backend (NestJS - Port 3001)
+```
+apps/backend/src/
+├── auth/                  # Authentication module
+├── github/                # GitHub service
+├── installations/         # Installations module
+├── repositories/          # Repositories module
+├── users/                 # Users module
+├── database/              # Database schemas and models
+└── main.ts               # Application entry point
 ```
 
 ## Development

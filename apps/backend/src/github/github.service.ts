@@ -7,6 +7,7 @@ export class GitHubService {
   private app: App;
 
   constructor() {
+    console.log(process.env.GITHUB_APP_ID, process.env.GITHUB_PRIVATE_KEY);
     this.app = new App({
       appId: process.env.GITHUB_APP_ID,
       privateKey: process.env.GITHUB_PRIVATE_KEY,

@@ -72,7 +72,7 @@ export class AuthService {
           // Create new installation
           dbInstallation = await this.installationsService.create({
             installationId: installation.id,
-            userId: user._id.toString(),
+            userId: user['id'].toString(),
             accountLogin: installation.account.login,
             accountType: installation.account.type,
             permissions: installation.permissions,
@@ -89,7 +89,7 @@ export class AuthService {
 
       // Create JWT token
       const payload = {
-        userId: user._id.toString(),
+        userId: user['id'].toString(),
         githubId: user.githubId,
         login: user.login,
         name: user.name,
@@ -107,7 +107,7 @@ export class AuthService {
       return {
         access_token: this.jwtService.sign(payload),
         user: {
-          id: user._id,
+          id: user['id'],
           githubId: user.githubId,
           login: user.login,
           name: user.name,

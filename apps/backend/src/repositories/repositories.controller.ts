@@ -14,14 +14,12 @@ import { RepositoriesService } from './repositories.service';
 import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthService } from '../auth/auth.service';
 
 @ApiTags('repositories')
 @Controller('repositories')
 export class RepositoriesController {
   constructor(
     private readonly repositoriesService: RepositoriesService,
-    private readonly authService: AuthService,
   ) {}
 
   @Post()
