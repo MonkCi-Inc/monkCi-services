@@ -1,0 +1,253 @@
+'use client';
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  Building2, 
+  User, 
+  GitBranch, 
+  Settings, 
+  LogOut,
+  Plus,
+  Play
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { authService, User } from "@/lib/auth";
+import { apiService, Installation } from "@/lib/api";
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [installations, setInstallations] = useState<Installation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is authenticated and load data
+    const loadDashboardData = async () => {
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+        
+        // Load installations from the API
+        const installationsData = await apiService.getInstallations();
+        setInstallations(installationsData);
+      } catch (error) {
+        console.error('Dashboard data load failed:', error);
+        router.push('/auth/signin');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const handleInstallationClick = (installation: Installation) => {
+    router.push(`/dashboard/installation/${installation._id}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
+                <span className="text-sm font-bold text-primary-foreground">M</span>
+              </div>
+              <h1 className="text-xl font-semibold">Monk CI Dashboard</h1>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.avatarUrl} alt={user.name} />
+                  <AvatarFallback>{user.name?.charAt(0) || user.login.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium">{user.name || user.login}</p>
+                  <p className="text-xs text-muted-foreground">@{user.login}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Your GitHub Installations</h2>
+          <p className="text-muted-foreground">
+            Select an installation to manage your CI/CD pipelines
+          </p>
+        </div>
+
+        {installations.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="mx-auto mb-4 w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <Building2 className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Installations Found</h3>
+              <p className="text-muted-foreground mb-4">
+                You haven't installed Monk CI on any repositories yet.
+              </p>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Install Monk CI
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {installations.map((installation) => (
+              <Card 
+                key={installation._id}
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleInstallationClick(installation)}
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {installation.accountType === 'Organization' ? (
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <User className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <CardTitle className="text-lg">{installation.accountLogin}</CardTitle>
+                        <CardDescription>
+                          {installation.accountType === 'Organization' ? 'Organization' : 'Personal Account'}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">
+                      {installation.repositorySelection === 'all' ? 'All Repos' : 'Selected'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Repositories:</span>
+                      <span className="font-medium">
+                        {installation.repositorySelection === 'all' ? 'All' : 'Selected'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Permissions:</span>
+                      <div className="flex space-x-1">
+                        {Object.keys(installation.permissions).slice(0, 2).map((perm) => (
+                          <Badge key={perm} variant="outline" className="text-xs">
+                            {perm}
+                          </Badge>
+                        ))}
+                        {Object.keys(installation.permissions).length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{Object.keys(installation.permissions).length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-2 pt-2">
+                      <Button size="sm" className="flex-1">
+                        <Play className="h-4 w-4 mr-2" />
+                        View Pipelines
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Stats Section */}
+        <div className="mt-12">
+          <h3 className="text-xl font-semibold mb-6">Quick Stats</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <GitBranch className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{installations.length}</p>
+                    <p className="text-sm text-muted-foreground">Installations</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
+                    <Play className="h-6 w-6 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-sm text-muted-foreground">Active Pipelines</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                    <Settings className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-sm text-muted-foreground">Repositories</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+} 
