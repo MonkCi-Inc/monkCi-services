@@ -15,7 +15,8 @@ import {
   GitFork,
   Star,
   Eye,
-  Calendar
+  Calendar,
+  Server
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -75,6 +76,10 @@ export default function DashboardPage() {
     router.push(`/dashboard/installation/${installation._id}`);
   };
 
+  const handleRepositoryClick = (repository: Repository) => {
+    router.push(`/dashboard/repository/${repository._id}`);
+  };
+
   const handleInstallMonkCI = () => {
     // Check if GitHub App slug is configured
     const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
@@ -128,6 +133,10 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground">@{user.login}</p>
                 </div>
               </div>
+              <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/runners')}>
+                <Server className="h-4 w-4 mr-2" />
+                Runners
+              </Button>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
@@ -257,6 +266,7 @@ export default function DashboardPage() {
               <Card 
                 key={repository._id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleRepositoryClick(repository)}
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">

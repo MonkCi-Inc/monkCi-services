@@ -12,6 +12,8 @@ const mongoose_1 = require("@nestjs/mongoose");
 const repositories_service_1 = require("./repositories.service");
 const repositories_controller_1 = require("./repositories.controller");
 const repository_schema_1 = require("./schemas/repository.schema");
+const github_module_1 = require("../github/github.module");
+const installations_module_1 = require("../installations/installations.module");
 let RepositoriesModule = class RepositoriesModule {
 };
 exports.RepositoriesModule = RepositoriesModule;
@@ -19,6 +21,8 @@ exports.RepositoriesModule = RepositoriesModule = __decorate([
     (0, common_1.Module)({
         imports: [
             mongoose_1.MongooseModule.forFeature([{ name: repository_schema_1.Repository.name, schema: repository_schema_1.RepositorySchema }]),
+            github_module_1.GitHubModule,
+            installations_module_1.InstallationsModule,
         ],
         controllers: [repositories_controller_1.RepositoriesController],
         providers: [repositories_service_1.RepositoriesService],

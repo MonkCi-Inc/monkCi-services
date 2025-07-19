@@ -19,9 +19,13 @@ const repositories_service_1 = require("./repositories.service");
 const create_repository_dto_1 = require("./dto/create-repository.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
+const github_service_1 = require("../github/github.service");
+const installations_service_1 = require("../installations/installations.service");
 let RepositoriesController = class RepositoriesController {
-    constructor(repositoriesService) {
+    constructor(repositoriesService, githubService, installationsService) {
         this.repositoriesService = repositoriesService;
+        this.githubService = githubService;
+        this.installationsService = installationsService;
     }
     create(createRepositoryDto) {
         return this.repositoriesService.create(createRepositoryDto);
@@ -50,6 +54,70 @@ let RepositoriesController = class RepositoriesController {
     }
     async syncAllRepositories(user) {
         return this.repositoriesService.syncAllRepositoriesForUser(user.userId);
+    }
+    async getRepositoryRunners(id) {
+        const repository = await this.repositoriesService.findOne(id);
+        if (!repository.installationId) {
+            return { runners: [], message: 'Repository not associated with an installation' };
+        }
+        const installation = repository.installationId;
+        const [owner, repo] = repository.fullName.split('/');
+        try {
+            const runners = await this.githubService.getRepositoryRunners(installation.installationId, owner, repo);
+            return { runners };
+        }
+        catch (error) {
+            console.error('Error fetching repository runners:', error);
+            return { runners: [], error: error.message };
+        }
+    }
+    async getRepositoryWorkflows(id) {
+        const repository = await this.repositoriesService.findOne(id);
+        if (!repository.installationId) {
+            return { workflows: [], message: 'Repository not associated with an installation' };
+        }
+        const installation = repository.installationId;
+        const [owner, repo] = repository.fullName.split('/');
+        try {
+            const workflows = await this.githubService.getRepositoryWorkflows(installation.installationId, owner, repo);
+            return { workflows };
+        }
+        catch (error) {
+            console.error('Error fetching repository workflows:', error);
+            return { workflows: [], error: error.message };
+        }
+    }
+    async getWorkflowRuns(id, workflowId) {
+        const repository = await this.repositoriesService.findOne(id);
+        if (!repository.installationId) {
+            return { runs: [], message: 'Repository not associated with an installation' };
+        }
+        const installation = repository.installationId;
+        const [owner, repo] = repository.fullName.split('/');
+        try {
+            const runs = await this.githubService.getWorkflowRuns(installation.installationId, owner, repo, parseInt(workflowId));
+            return { runs };
+        }
+        catch (error) {
+            console.error('Error fetching workflow runs:', error);
+            return { runs: [], error: error.message };
+        }
+    }
+    async getWorkflowRunLogs(id, runId) {
+        const repository = await this.repositoriesService.findOne(id);
+        if (!repository.installationId) {
+            return { logs: null, message: 'Repository not associated with an installation' };
+        }
+        const installation = repository.installationId;
+        const [owner, repo] = repository.fullName.split('/');
+        try {
+            const logs = await this.githubService.getWorkflowRunLogs(installation.installationId, owner, repo, parseInt(runId));
+            return { logs };
+        }
+        catch (error) {
+            console.error('Error fetching workflow run logs:', error);
+            return { logs: null, error: error.message };
+        }
     }
 };
 exports.RepositoriesController = RepositoriesController;
@@ -141,9 +209,57 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], RepositoriesController.prototype, "syncAllRepositories", null);
+__decorate([
+    (0, common_1.Get)(':id/runners'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get GitHub Actions runners for a repository' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return the repository runners.' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RepositoriesController.prototype, "getRepositoryRunners", null);
+__decorate([
+    (0, common_1.Get)(':id/workflows'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get GitHub Actions workflows for a repository' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return the repository workflows.' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RepositoriesController.prototype, "getRepositoryWorkflows", null);
+__decorate([
+    (0, common_1.Get)(':id/workflows/:workflowId/runs'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get GitHub Actions workflow runs for a specific workflow' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return the workflow runs.' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('workflowId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], RepositoriesController.prototype, "getWorkflowRuns", null);
+__decorate([
+    (0, common_1.Get)(':id/runs/:runId/logs'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get GitHub Actions workflow run logs for a specific run' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return the workflow run logs.' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('runId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], RepositoriesController.prototype, "getWorkflowRunLogs", null);
 exports.RepositoriesController = RepositoriesController = __decorate([
     (0, swagger_1.ApiTags)('repositories'),
     (0, common_1.Controller)('repositories'),
-    __metadata("design:paramtypes", [repositories_service_1.RepositoriesService])
+    __metadata("design:paramtypes", [repositories_service_1.RepositoriesService,
+        github_service_1.GitHubService,
+        installations_service_1.InstallationsService])
 ], RepositoriesController);
 //# sourceMappingURL=repositories.controller.js.map

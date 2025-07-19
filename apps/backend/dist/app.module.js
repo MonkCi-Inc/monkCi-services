@@ -16,6 +16,7 @@ const installations_module_1 = require("./installations/installations.module");
 const repositories_module_1 = require("./repositories/repositories.module");
 const pipelines_module_1 = require("./pipelines/pipelines.module");
 const jobs_module_1 = require("./jobs/jobs.module");
+const runners_module_1 = require("./runners/runners.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,6 +34,7 @@ exports.AppModule = AppModule = __decorate([
             repositories_module_1.RepositoriesModule,
             pipelines_module_1.PipelinesModule,
             jobs_module_1.JobsModule,
+            runners_module_1.RunnersModule,
         ],
     })
 ], AppModule);

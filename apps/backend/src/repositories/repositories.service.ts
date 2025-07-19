@@ -95,6 +95,15 @@ export class RepositoriesService {
     };
   }
 
+  async getInstallation(installationId: string): Promise<any> {
+    // This would ideally use the InstallationsService, but for now we'll return a basic structure
+    // In a real implementation, you'd inject InstallationsService and use it here
+    return {
+      installationId: parseInt(installationId),
+      // Add other installation fields as needed
+    };
+  }
+
   async syncAllRepositoriesForUser(userId: string): Promise<any> {
     // This method would need access to InstallationsService and GitHubService
     // For now, just return the current repositories for this user

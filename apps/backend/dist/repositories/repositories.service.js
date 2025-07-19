@@ -92,6 +92,11 @@ let RepositoriesService = class RepositoriesService {
             repositories
         };
     }
+    async getInstallation(installationId) {
+        return {
+            installationId: parseInt(installationId),
+        };
+    }
     async syncAllRepositoriesForUser(userId) {
         const repositories = await this.repositoryModel.find().populate({
             path: 'installationId',

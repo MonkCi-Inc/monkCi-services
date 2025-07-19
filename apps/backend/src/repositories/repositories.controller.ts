@@ -14,12 +14,16 @@ import { RepositoriesService } from './repositories.service';
 import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { GitHubService } from '../github/github.service';
+import { InstallationsService } from '../installations/installations.service';
 
 @ApiTags('repositories')
 @Controller('repositories')
 export class RepositoriesController {
   constructor(
     private readonly repositoriesService: RepositoriesService,
+    private readonly githubService: GitHubService,
+    private readonly installationsService: InstallationsService,
   ) {}
 
   @Post()
@@ -96,5 +100,131 @@ export class RepositoriesController {
   @ApiResponse({ status: 200, description: 'All repositories synced successfully.' })
   async syncAllRepositories(@CurrentUser() user: any) {
     return this.repositoriesService.syncAllRepositoriesForUser(user.userId);
+  }
+
+  @Get(':id/runners')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get GitHub Actions runners for a repository' })
+  @ApiResponse({ status: 200, description: 'Return the repository runners.' })
+  async getRepositoryRunners(@Param('id') id: string) {
+    const repository = await this.repositoriesService.findOne(id);
+    
+    if (!repository.installationId) {
+      return { runners: [], message: 'Repository not associated with an installation' };
+    }
+
+    // The installation is already populated, so we can use it directly
+    const installation = repository.installationId as any;
+    
+    // Extract owner and repo from fullName
+    const [owner, repo] = repository.fullName.split('/');
+    
+    try {
+      const runners = await this.githubService.getRepositoryRunners(
+        installation.installationId,
+        owner,
+        repo
+      );
+      return { runners };
+    } catch (error) {
+      console.error('Error fetching repository runners:', error);
+      return { runners: [], error: error.message };
+    }
+  }
+
+  @Get(':id/workflows')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get GitHub Actions workflows for a repository' })
+  @ApiResponse({ status: 200, description: 'Return the repository workflows.' })
+  async getRepositoryWorkflows(@Param('id') id: string) {
+    const repository = await this.repositoriesService.findOne(id);
+    
+    if (!repository.installationId) {
+      return { workflows: [], message: 'Repository not associated with an installation' };
+    }
+
+    // The installation is already populated, so we can use it directly
+    const installation = repository.installationId as any;
+    
+    // Extract owner and repo from fullName
+    const [owner, repo] = repository.fullName.split('/');
+    
+    try {
+      const workflows = await this.githubService.getRepositoryWorkflows(
+        installation.installationId,
+        owner,
+        repo
+      );
+      return { workflows };
+    } catch (error) {
+      console.error('Error fetching repository workflows:', error);
+      return { workflows: [], error: error.message };
+    }
+  }
+
+  @Get(':id/workflows/:workflowId/runs')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get GitHub Actions workflow runs for a specific workflow' })
+  @ApiResponse({ status: 200, description: 'Return the workflow runs.' })
+  async getWorkflowRuns(@Param('id') id: string, @Param('workflowId') workflowId: string) {
+    const repository = await this.repositoriesService.findOne(id);
+    
+    if (!repository.installationId) {
+      return { runs: [], message: 'Repository not associated with an installation' };
+    }
+
+    // The installation is already populated, so we can use it directly
+    const installation = repository.installationId as any;
+    
+    // Extract owner and repo from fullName
+    const [owner, repo] = repository.fullName.split('/');
+    
+    try {
+      const runs = await this.githubService.getWorkflowRuns(
+        installation.installationId,
+        owner,
+        repo,
+        parseInt(workflowId)
+      );
+      return { runs };
+    } catch (error) {
+      console.error('Error fetching workflow runs:', error);
+      return { runs: [], error: error.message };
+    }
+  }
+
+  @Get(':id/runs/:runId/logs')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get GitHub Actions workflow run logs for a specific run' })
+  @ApiResponse({ status: 200, description: 'Return the workflow run logs.' })
+  async getWorkflowRunLogs(@Param('id') id: string, @Param('runId') runId: string) {
+    const repository = await this.repositoriesService.findOne(id);
+    
+    if (!repository.installationId) {
+      return { logs: null, message: 'Repository not associated with an installation' };
+    }
+
+    // The installation is already populated, so we can use it directly
+    const installation = repository.installationId as any;
+    
+    // Extract owner and repo from fullName
+    const [owner, repo] = repository.fullName.split('/');
+    
+    try {
+      const logs = await this.githubService.getWorkflowRunLogs(
+        installation.installationId,
+        owner,
+        repo,
+        parseInt(runId)
+      );
+      return { logs };
+    } catch (error) {
+      console.error('Error fetching workflow run logs:', error);
+      return { logs: null, error: error.message };
+    }
   }
 } 

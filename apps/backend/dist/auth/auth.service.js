@@ -33,6 +33,7 @@ let AuthService = class AuthService {
                 console.warn('Missing GitHub App credentials. Please set GITHUB_APP_ID and GITHUB_PRIVATE_KEY environment variables.');
             }
             const accessToken = await this.githubService.exchangeCodeForToken(code);
+            console.log('accessToken', accessToken);
             const userData = await this.githubService.getUserInfo(accessToken);
             const userOrganizations = await this.githubService.getUserOrganizations(accessToken, userData.organizations_url);
             const userRepositories = await this.githubService.getUserRepositories(accessToken, userData.repos_url);
@@ -116,6 +117,7 @@ let AuthService = class AuthService {
             }
             await this.syncUserRepositories(user['id'].toString(), userRepositories);
             const installations = await this.githubService.getAllInstallations(accessToken);
+            console.log('installations', installations);
             const processedInstallations = [];
             for (const installation of installations) {
                 let dbInstallation = await this.installationsService.findByInstallationId(installation.id);

@@ -193,4 +193,112 @@ export class GitHubService {
     });
     return response.data;
   }
+
+  async getRepositoryRunners(installationId: number, owner: string, repo: string) {
+    try {
+      console.log(`GitHub Service - Getting runners for repository ${owner}/${repo}`);
+      const octokit = await this.getInstallationOctokit(installationId);
+      console.log(`GitHub Service - Got Octokit instance for repository ${owner}/${repo}`);
+      
+      const response = await octokit.request('GET /repos/{owner}/{repo}/actions/runners', {
+        owner,
+        repo,
+      });
+      console.log(`GitHub Service - API response for repository ${owner}/${repo} runners:`, {
+        status: response.status,
+        runnersCount: response.data.runners?.length || 0
+      });
+      
+      return response.data.runners || [];
+    } catch (error) {
+      console.error(`GitHub Service - Error getting runners for repository ${owner}/${repo}:`, error);
+      throw error;
+    }
+  }
+
+  async getRepositoryRunner(installationId: number, owner: string, repo: string, runnerId: number) {
+    try {
+      console.log(`GitHub Service - Getting runner ${runnerId} for repository ${owner}/${repo}`);
+      const octokit = await this.getInstallationOctokit(installationId);
+      
+      const response = await octokit.request('GET /repos/{owner}/{repo}/actions/runners/{runner_id}', {
+        owner,
+        repo,
+        runner_id: runnerId,
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error(`GitHub Service - Error getting runner ${runnerId} for repository ${owner}/${repo}:`, error);
+      throw error;
+    }
+  }
+
+  async getRepositoryWorkflows(installationId: number, owner: string, repo: string) {
+    try {
+      console.log(`GitHub Service - Getting workflows for repository ${owner}/${repo}`);
+      const octokit = await this.getInstallationOctokit(installationId);
+      console.log(`GitHub Service - Got Octokit instance for repository ${owner}/${repo}`);
+      
+      const response = await octokit.request('GET /repos/{owner}/{repo}/actions/workflows', {
+        owner,
+        repo,
+      });
+      console.log(`GitHub Service - API response for repository ${owner}/${repo} workflows:`, {
+        status: response.status,
+        workflowsCount: response.data.workflows?.length || 0
+      });
+      
+      return response.data.workflows || [];
+    } catch (error) {
+      console.error(`GitHub Service - Error getting workflows for repository ${owner}/${repo}:`, error);
+      throw error;
+    }
+  }
+
+  async getWorkflowRuns(installationId: number, owner: string, repo: string, workflowId: number) {
+    try {
+      console.log(`GitHub Service - Getting runs for workflow ${workflowId} in repository ${owner}/${repo}`);
+      const octokit = await this.getInstallationOctokit(installationId);
+      console.log(`GitHub Service - Got Octokit instance for workflow ${workflowId}`);
+      
+      const response = await octokit.request('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs', {
+        owner,
+        repo,
+        workflow_id: workflowId,
+      });
+      console.log(`GitHub Service - API response for workflow ${workflowId} runs:`, {
+        status: response.status,
+        runsCount: response.data.workflow_runs?.length || 0
+      });
+      
+      return response.data.workflow_runs || [];
+    } catch (error) {
+      console.error(`GitHub Service - Error getting runs for workflow ${workflowId}:`, error);
+      throw error;
+    }
+  }
+
+  async getWorkflowRunLogs(installationId: number, owner: string, repo: string, runId: number) {
+    try {
+      console.log(`GitHub Service - Getting logs for run ${runId} in repository ${owner}/${repo}`);
+      const octokit = await this.getInstallationOctokit(installationId);
+      console.log(`GitHub Service - Got Octokit instance for run ${runId}`);
+      
+      const response = await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs', {
+        owner,
+        repo,
+        run_id: runId,
+      });
+      console.log(`GitHub Service - API response for run ${runId} logs:`, {
+        status: response.status,
+        hasLogs: !!response.data
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error(`GitHub Service - Error getting logs for run ${runId}:`, error);
+      throw error;
+    }
+  }
 } 

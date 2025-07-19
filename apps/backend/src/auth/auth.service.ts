@@ -28,6 +28,8 @@ export class AuthService {
 
       // Exchange code for access token using GitHubService
       const accessToken = await this.githubService.exchangeCodeForToken(code);
+      
+      console.log('accessToken', accessToken);
 
       // Get user information using GitHubService 
       const userData = await this.githubService.getUserInfo(accessToken);
@@ -125,6 +127,8 @@ export class AuthService {
 
       // Get user's installations using GitHubService
       const installations = await this.githubService.getAllInstallations(accessToken);
+
+      console.log('installations', installations);
 
       // Process each installation
       const processedInstallations = [];

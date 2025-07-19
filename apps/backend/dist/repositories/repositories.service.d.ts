@@ -16,5 +16,6 @@ export declare class RepositoriesService {
     removeByInstallationId(installationId: string): Promise<void>;
     getRepositoryCount(): Promise<number>;
     syncRepositoriesForInstallation(installationId: string): Promise<any>;
+    getInstallation(installationId: string): Promise<any>;
     syncAllRepositoriesForUser(userId: string): Promise<any>;
 }
