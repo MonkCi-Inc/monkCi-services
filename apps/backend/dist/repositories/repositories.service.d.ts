@@ -14,4 +14,7 @@ export declare class RepositoriesService {
     upsertRepository(repositoryData: CreateRepositoryDto): Promise<Repository>;
     remove(id: string): Promise<Repository>;
     removeByInstallationId(installationId: string): Promise<void>;
+    getRepositoryCount(): Promise<number>;
+    syncRepositoriesForInstallation(installationId: string): Promise<any>;
+    syncAllRepositoriesForUser(userId: string): Promise<any>;
 }

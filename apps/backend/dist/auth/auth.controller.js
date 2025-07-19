@@ -32,9 +32,7 @@ let AuthController = class AuthController {
     }
     async githubCallback(code, state, res) {
         try {
-            console.log('code is getting here');
             const result = await this.authService.validateGithubCode(code);
-            console.log('result', result);
             if (res) {
                 res.cookie('monkci_token', result.access_token, {
                     httpOnly: true,
@@ -42,7 +40,8 @@ let AuthController = class AuthController {
                     sameSite: 'lax',
                     maxAge: 60 * 60 * 24 * 7 * 1000,
                 });
-                return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`);
+                const redirect_url = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`;
+                return res.redirect(redirect_url);
             }
             return result;
         }
@@ -70,7 +69,44 @@ let AuthController = class AuthController {
         return res.status(common_1.HttpStatus.OK).json({ message: 'Logged out successfully' });
     }
     async getCurrentUser(user) {
+        console.log('Auth Controller - getCurrentUser called with user:', user ? 'User exists' : 'No user');
         return user;
+    }
+    async testOrganizations(code) {
+        try {
+            const accessToken = await this.authService.githubServiceAccess.exchangeCodeForToken(code);
+            const userInfo = await this.authService.githubServiceAccess.getUserInfo(accessToken);
+            const organizations = await this.authService.githubServiceAccess.getUserOrganizations(accessToken, userInfo.organizations_url);
+            const allInstallations = await this.authService.githubServiceAccess.getAllInstallations(accessToken);
+            return {
+                user: {
+                    login: userInfo.login,
+                    id: userInfo.id,
+                    name: userInfo.name
+                },
+                organizations: organizations.map(org => ({
+                    login: org.login,
+                    id: org.id,
+                    type: org.type
+                })),
+                installations: allInstallations.map(inst => ({
+                    id: inst.id,
+                    accountLogin: inst.account.login,
+                    accountType: inst.account.type,
+                    appSlug: inst.app_slug
+                })),
+                summary: {
+                    totalOrganizations: organizations.length,
+                    totalInstallations: allInstallations.length,
+                    personalInstallations: allInstallations.filter(inst => inst.account.type === 'User').length,
+                    organizationInstallations: allInstallations.filter(inst => inst.account.type === 'Organization').length
+                }
+            };
+        }
+        catch (error) {
+            console.error('Auth Controller - Error in testOrganizations:', error);
+            return { error: error.message };
+        }
     }
 };
 exports.AuthController = AuthController;
@@ -140,6 +176,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getCurrentUser", null);
+__decorate([
+    (0, common_1.Get)('test/organizations'),
+    (0, swagger_1.ApiOperation)({ summary: 'Test organization access with a code parameter' }),
+    (0, swagger_1.ApiQuery)({ name: 'code', required: true, description: 'OAuth code' }),
+    __param(0, (0, common_1.Query)('code')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "testOrganizations", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, common_1.Controller)('auth'),

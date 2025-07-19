@@ -1,6 +1,7 @@
 export declare class CreateRepositoryDto {
     repositoryId: number;
-    installationId: string;
+    installationId?: string;
+    userId: string;
     name: string;
     fullName: string;
     private: boolean;
@@ -19,4 +20,26 @@ export declare class CreateRepositoryDto {
     createdAt: string;
     updatedAt: string;
     pushedAt: string;
+    nodeId?: string;
+    htmlUrl?: string;
+    url?: string;
+    gitUrl?: string;
+    sshUrl?: string;
+    cloneUrl?: string;
+    svnUrl?: string;
+    homepage?: string;
+    hasIssues?: boolean;
+    hasProjects?: boolean;
+    hasDownloads?: boolean;
+    hasWiki?: boolean;
+    hasPages?: boolean;
+    hasDiscussions?: boolean;
+    mirrorUrl?: string;
+    allowForking?: boolean;
+    isTemplate?: boolean;
+    webCommitSignoffRequired?: boolean;
+    visibility?: string;
+    license?: Record<string, any>;
+    permissions?: Record<string, any>;
+    owner?: Record<string, any>;
 }

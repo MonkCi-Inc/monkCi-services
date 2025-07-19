@@ -8,8 +8,9 @@ export declare class RepositoriesController {
     findOne(id: string): Promise<import("./schemas/repository.schema").Repository>;
     update(id: string, updateRepositoryDto: Partial<CreateRepositoryDto>): Promise<import("./schemas/repository.schema").Repository>;
     remove(id: string): Promise<import("./schemas/repository.schema").Repository>;
-    syncRepositories(installationId: string, user: any): Promise<{
-        message: string;
-        installationId: string;
+    syncRepositories(installationId: string): Promise<any>;
+    getRepositoryCount(): Promise<{
+        count: number;
     }>;
+    syncAllRepositories(user: any): Promise<any>;
 }

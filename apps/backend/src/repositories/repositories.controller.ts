@@ -74,14 +74,27 @@ export class RepositoriesController {
   @Post('sync/:installationId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Sync repositories for an installation' })
+  @ApiOperation({ summary: 'Sync repositories for installation' })
   @ApiResponse({ status: 200, description: 'Repositories synced successfully.' })
-  async syncRepositories(
-    @Param('installationId') installationId: string,
-    @CurrentUser() user: any,
-  ) {
-    // This endpoint will trigger a manual sync of repositories for the given installation
-    // The actual sync logic is handled in the AuthService
-    return { message: 'Repository sync initiated', installationId };
+  async syncRepositories(@Param('installationId') installationId: string) {
+    return this.repositoriesService.syncRepositoriesForInstallation(installationId);
+  }
+
+  @Get('debug/count')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get repository count for debugging' })
+  async getRepositoryCount() {
+    const count = await this.repositoriesService.getRepositoryCount();
+    return { count };
+  }
+
+  @Post('sync/all')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Sync repositories for all installations' })
+  @ApiResponse({ status: 200, description: 'All repositories synced successfully.' })
+  async syncAllRepositories(@CurrentUser() user: any) {
+    return this.repositoriesService.syncAllRepositoriesForUser(user.userId);
   }
 } 

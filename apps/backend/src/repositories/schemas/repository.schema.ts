@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Types, Schema as MongooseSchema } from 'mongoose';
 
 export type RepositoryDocument = Repository & Document;
 
@@ -8,8 +8,11 @@ export class Repository {
   @Prop({ required: true, unique: true })
   repositoryId: number;
 
-  @Prop({ type: Types.ObjectId, ref: 'Installation', required: true })
-  installationId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Installation' })
+  installationId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  userId: Types.ObjectId;
 
   @Prop({ required: true })
   name: string;
@@ -67,6 +70,73 @@ export class Repository {
 
   @Prop({ required: true })
   lastSyncAt: Date;
+
+  // Additional GitHub repository data
+  @Prop()
+  nodeId: string;
+
+  @Prop()
+  htmlUrl: string;
+
+  @Prop()
+  url: string;
+
+  @Prop()
+  gitUrl: string;
+
+  @Prop()
+  sshUrl: string;
+
+  @Prop()
+  cloneUrl: string;
+
+  @Prop()
+  svnUrl: string;
+
+  @Prop()
+  homepage: string;
+
+  @Prop()
+  hasIssues: boolean;
+
+  @Prop()
+  hasProjects: boolean;
+
+  @Prop()
+  hasDownloads: boolean;
+
+  @Prop()
+  hasWiki: boolean;
+
+  @Prop()
+  hasPages: boolean;
+
+  @Prop()
+  hasDiscussions: boolean;
+
+  @Prop()
+  mirrorUrl: string;
+
+  @Prop()
+  allowForking: boolean;
+
+  @Prop()
+  isTemplate: boolean;
+
+  @Prop()
+  webCommitSignoffRequired: boolean;
+
+  @Prop()
+  visibility: string;
+
+  @Prop()
+  license?: MongooseSchema.Types.Mixed;
+
+  @Prop()
+  permissions?: MongooseSchema.Types.Mixed;
+
+  @Prop()
+  owner?: MongooseSchema.Types.Mixed;
 }
 
 export const RepositorySchema = SchemaFactory.createForClass(Repository); 

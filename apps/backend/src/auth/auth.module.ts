@@ -17,7 +17,7 @@ import { GitHubModule } from '../github/github.module';
     GitHubModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: process.env.JWT_SECRET || 'fallback-jwt-secret-for-development-only',
       signOptions: { expiresIn: '7d' },
     }),
   ],

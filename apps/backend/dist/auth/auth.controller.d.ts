@@ -32,4 +32,31 @@ export declare class AuthController {
     }>;
     logout(res: Response): Promise<Response<any, Record<string, any>>>;
     getCurrentUser(user: any): Promise<any>;
+    testOrganizations(code: string): Promise<{
+        user: {
+            login: any;
+            id: any;
+            name: any;
+        };
+        organizations: any;
+        installations: {
+            id: any;
+            accountLogin: any;
+            accountType: any;
+            appSlug: any;
+        }[];
+        summary: {
+            totalOrganizations: any;
+            totalInstallations: number;
+            personalInstallations: number;
+            organizationInstallations: number;
+        };
+        error?: undefined;
+    } | {
+        error: any;
+        user?: undefined;
+        organizations?: undefined;
+        installations?: undefined;
+        summary?: undefined;
+    }>;
 }

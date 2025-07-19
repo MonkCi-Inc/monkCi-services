@@ -84,7 +84,7 @@ class AuthService {
 
 export const authService = new AuthService();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-jwt-secret-for-development-only';
 
 export interface UserSession {
   userId: string; // MongoDB ObjectId as string

@@ -28,6 +28,7 @@ export declare class AuthService {
         permissions: Record<string, string>;
     }>;
     syncRepositoriesForInstallation(installation: any): Promise<void>;
+    syncUserRepositories(userId: string, repositories: any[]): Promise<void>;
     getInstallationOctokit(installationId: number, userId: string): Promise<import("@octokit/core").Octokit & {
         paginate: import("@octokit/plugin-paginate-rest").PaginateInterface;
     } & import("@octokit/plugin-paginate-graphql").paginateGraphQLInterface & import("@octokit/plugin-rest-endpoint-methods").Api & {
@@ -35,4 +36,6 @@ export declare class AuthService {
             retryRequest: (error: import("octokit").RequestError, retries: number, retryAfter: number) => import("octokit").RequestError;
         };
     }>;
+    getUserWithToken(userId: string): Promise<import("../users/schemas/user.schema").User>;
+    get githubServiceAccess(): GitHubService;
 }

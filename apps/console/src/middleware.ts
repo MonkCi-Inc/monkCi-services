@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/auth';
 
 // Routes that require authentication
 const protectedRoutes = ['/dashboard'];
@@ -11,12 +10,20 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('monkci_token')?.value;
 
-  // Check if user is authenticated
-  const isAuthenticated = token && verifyToken(token);
+  // Debug logging
+  console.log('Middleware - Path:', pathname);
+  console.log('Middleware - Token exists:', !!token);
+
+  // For now, we'll just check if the token exists
+  // The actual authentication will be handled by the backend API calls
+  const hasToken = !!token;
+  
+  console.log('Middleware - Has token:', hasToken);
 
   // Redirect authenticated users away from auth pages
   if (authRoutes.some(route => pathname.startsWith(route))) {
-    if (isAuthenticated) {
+    if (hasToken) {
+      console.log('Middleware - Redirecting user with token from auth page to dashboard');
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return NextResponse.next();
@@ -24,7 +31,8 @@ export function middleware(request: NextRequest) {
 
   // Protect dashboard routes
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    if (!isAuthenticated) {
+    if (!hasToken) {
+      console.log('Middleware - Redirecting user without token from dashboard to signin');
       return NextResponse.redirect(new URL('/auth/signin', request.url));
     }
   }

@@ -163,11 +163,14 @@ The API will be available at `http://localhost:3001` and Swagger documentation a
 
 1. Create a GitHub App at https://github.com/settings/apps/new
 2. Set the following permissions:
-   - Repository permissions: Contents (Read), Metadata (Read)
-   - User permissions: Email addresses (Read)
+   - **Repository permissions**: Contents (Read), Metadata (Read)
+   - **User permissions**: Email addresses (Read)
+   - **Organization permissions**: Members (Read) - to access organization installations
 3. Set the callback URL to: `http://localhost:3001/auth/github/callback`
 4. Generate a private key and download it
 5. Note your App ID and Client ID
+
+**Important**: To access organization repositories, the GitHub App must be installed on the organization by an organization owner or admin. Users can only see installations for organizations where they have admin access.
 
 ## Development
 

@@ -9,6 +9,8 @@ export declare class GitHubService {
         };
     }>;
     getUserInstallations(accessToken: string): Promise<any>;
+    getOrganizationInstallations(accessToken: string, orgLogin: string): Promise<any>;
+    getAllInstallations(accessToken: string): Promise<any[]>;
     getInstallationRepositories(installationId: number): Promise<{
         id: number;
         node_id: string;
@@ -117,6 +119,8 @@ export declare class GitHubService {
         };
     }[]>;
     getUserInfo(accessToken: string): Promise<any>;
+    getUserOrganizations(accessToken: string, orgUrl: string): Promise<any>;
+    getUserRepositories(accessToken: string, reposUrl: string): Promise<any>;
     exchangeCodeForToken(code: string): Promise<any>;
     getRepositoryDetails(installationId: number, owner: string, repo: string): Promise<{
         id: number;

@@ -29,7 +29,7 @@ exports.AuthModule = AuthModule = __decorate([
             github_module_1.GitHubModule,
             passport_1.PassportModule,
             jwt_1.JwtModule.register({
-                secret: process.env.JWT_SECRET,
+                secret: process.env.JWT_SECRET || 'fallback-jwt-secret-for-development-only',
                 signOptions: { expiresIn: '7d' },
             }),
         ],

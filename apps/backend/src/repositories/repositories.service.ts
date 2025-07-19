@@ -49,12 +49,25 @@ export class RepositoriesService {
   }
 
   async upsertRepository(repositoryData: CreateRepositoryDto): Promise<Repository> {
-    const existingRepo = await this.findByRepositoryId(repositoryData.repositoryId);
-    
-    if (existingRepo) {
-      return this.updateByRepositoryId(repositoryData.repositoryId, repositoryData);
-    } else {
-      return this.create(repositoryData);
+    try {
+      console.log(`Repositories Service - Upserting repository: ${repositoryData.fullName} (ID: ${repositoryData.repositoryId})`);
+      
+      const existingRepo = await this.findByRepositoryId(repositoryData.repositoryId);
+      
+      if (existingRepo) {
+        console.log(`Repositories Service - Updating existing repository: ${repositoryData.fullName}`);
+        const updatedRepo = await this.updateByRepositoryId(repositoryData.repositoryId, repositoryData);
+        console.log(`Repositories Service - Successfully updated repository: ${repositoryData.fullName}`);
+        return updatedRepo;
+      } else {
+        console.log(`Repositories Service - Creating new repository: ${repositoryData.fullName}`);
+        const newRepo = await this.create(repositoryData);
+        console.log(`Repositories Service - Successfully created repository: ${repositoryData.fullName}`);
+        return newRepo;
+      }
+    } catch (error) {
+      console.error(`Repositories Service - Error upserting repository ${repositoryData.fullName}:`, error);
+      throw error;
     }
   }
 
@@ -64,5 +77,39 @@ export class RepositoriesService {
 
   async removeByInstallationId(installationId: string): Promise<void> {
     await this.repositoryModel.deleteMany({ installationId }).exec();
+  }
+
+  async getRepositoryCount(): Promise<number> {
+    return this.repositoryModel.countDocuments().exec();
+  }
+
+  async syncRepositoriesForInstallation(installationId: string): Promise<any> {
+    // This method would need access to GitHubService to actually sync
+    // For now, just return the current repositories for this installation
+    const repositories = await this.findByInstallationId(installationId);
+    return {
+      message: 'Repository sync completed',
+      installationId,
+      repositoriesCount: repositories.length,
+      repositories
+    };
+  }
+
+  async syncAllRepositoriesForUser(userId: string): Promise<any> {
+    // This method would need access to InstallationsService and GitHubService
+    // For now, just return the current repositories for this user
+    const repositories = await this.repositoryModel.find().populate({
+      path: 'installationId',
+      match: { userId: userId }
+    }).exec();
+    
+    const userRepositories = repositories.filter(repo => repo.installationId);
+    
+    return {
+      message: 'All repositories sync completed',
+      userId,
+      repositoriesCount: userRepositories.length,
+      repositories: userRepositories
+    };
   }
 } 

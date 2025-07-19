@@ -44,9 +44,7 @@ export class AuthController {
     @Res() res?: Response,
   ) {
     try {
-      console.log('code is getting here');
       const result = await this.authService.validateGithubCode(code);
-      console.log('result', result);
       
       if (res) {
         // Set JWT token as httpOnly cookie
@@ -56,9 +54,10 @@ export class AuthController {
           sameSite: 'lax',
           maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days
         });
-        
+
+        const redirect_url = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`;        
         // Redirect to frontend dashboard
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`);
+        return res.redirect(redirect_url);
       }
       
       return result;
@@ -114,6 +113,54 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user information' })
   @ApiResponse({ status: 200, description: 'Return current user information.' })
   async getCurrentUser(@CurrentUser() user: any) {
+    console.log('Auth Controller - getCurrentUser called with user:', user ? 'User exists' : 'No user');
     return user;
+  }
+
+  @Get('test/organizations')
+  @ApiOperation({ summary: 'Test organization access with a code parameter' })
+  @ApiQuery({ name: 'code', required: true, description: 'OAuth code' })
+  async testOrganizations(@Query('code') code: string) {
+    try {
+      // Exchange code for token
+      const accessToken = await this.authService.githubServiceAccess.exchangeCodeForToken(code);
+      
+      // Get user info
+      const userInfo = await this.authService.githubServiceAccess.getUserInfo(accessToken);
+      
+      // Get organizations
+      const organizations = await this.authService.githubServiceAccess.getUserOrganizations(accessToken, userInfo.organizations_url);
+      
+      // Get all installations
+      const allInstallations = await this.authService.githubServiceAccess.getAllInstallations(accessToken);
+      
+      return {
+        user: {
+          login: userInfo.login,
+          id: userInfo.id,
+          name: userInfo.name
+        },
+        organizations: organizations.map(org => ({
+          login: org.login,
+          id: org.id,
+          type: org.type
+        })),
+        installations: allInstallations.map(inst => ({
+          id: inst.id,
+          accountLogin: inst.account.login,
+          accountType: inst.account.type,
+          appSlug: inst.app_slug
+        })),
+        summary: {
+          totalOrganizations: organizations.length,
+          totalInstallations: allInstallations.length,
+          personalInstallations: allInstallations.filter(inst => inst.account.type === 'User').length,
+          organizationInstallations: allInstallations.filter(inst => inst.account.type === 'Organization').length
+        }
+      };
+    } catch (error) {
+      console.error('Auth Controller - Error in testOrganizations:', error);
+      return { error: error.message };
+    }
   }
 } 

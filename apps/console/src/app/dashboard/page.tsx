@@ -6,36 +6,53 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Building2, 
-  User, 
+  User as UserIcon, 
   GitBranch, 
   Settings, 
   LogOut,
   Plus,
-  Play
+  Play,
+  GitFork,
+  Star,
+  Eye,
+  Calendar
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authService, User } from "@/lib/auth";
-import { apiService, Installation } from "@/lib/api";
+import { apiService, Installation, Repository } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [installations, setInstallations] = useState<Installation[]>([]);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is authenticated and load data
     const loadDashboardData = async () => {
       try {
+        console.log('Dashboard - Loading user data...');
         const userData = await authService.getCurrentUser();
+        console.log('Dashboard - User data loaded:', userData);
         setUser(userData);
         
         // Load installations from the API
+        console.log('Dashboard - Loading installations...');
         const installationsData = await apiService.getInstallations();
+        console.log('Dashboard - Installations loaded:', installationsData);
         setInstallations(installationsData);
+
+        // Load repositories from the API
+        console.log('Dashboard - Loading repositories...');
+        const repositoriesData = await apiService.getRepositories();
+        console.log('Dashboard - Repositories loaded:', repositoriesData);
+        setRepositories(repositoriesData);
       } catch (error) {
         console.error('Dashboard data load failed:', error);
+        // Clear the invalid token
+        document.cookie = 'monkci_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         router.push('/auth/signin');
       } finally {
         setLoading(false);
@@ -56,6 +73,20 @@ export default function DashboardPage() {
 
   const handleInstallationClick = (installation: Installation) => {
     router.push(`/dashboard/installation/${installation._id}`);
+  };
+
+  const handleInstallMonkCI = () => {
+    // Check if GitHub App slug is configured
+    const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
+    if (!appSlug) {
+      alert('GitHub App slug not configured. Please set NEXT_PUBLIC_GITHUB_APP_SLUG in your environment variables.');
+      return;
+    }
+    
+    // Redirect to GitHub App installation
+    const githubAppUrl = `https://github.com/apps/${appSlug}/installations/new`;
+    console.log('Redirecting to GitHub App installation:', githubAppUrl);
+    window.open(githubAppUrl, '_blank');
   };
 
   if (loading) {
@@ -125,7 +156,7 @@ export default function DashboardPage() {
               <p className="text-muted-foreground mb-4">
                 You haven't installed Monk CI on any repositories yet.
               </p>
-              <Button>
+              <Button onClick={handleInstallMonkCI}>
                 <Plus className="h-4 w-4 mr-2" />
                 Install Monk CI
               </Button>
@@ -145,7 +176,7 @@ export default function DashboardPage() {
                       {installation.accountType === 'Organization' ? (
                         <Building2 className="h-5 w-5 text-muted-foreground" />
                       ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
+                        <UserIcon className="h-5 w-5 text-muted-foreground" />
                       )}
                       <div>
                         <CardTitle className="text-lg">{installation.accountLogin}</CardTitle>
@@ -182,6 +213,105 @@ export default function DashboardPage() {
                           </Badge>
                         )}
                       </div>
+                    </div>
+
+                    <div className="flex space-x-2 pt-2">
+                      <Button size="sm" className="flex-1">
+                        <Play className="h-4 w-4 mr-2" />
+                        View Pipelines
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Repositories Section */}
+        <div className="mt-12 mb-8">
+          <h2 className="text-2xl font-bold mb-2">Your Repositories</h2>
+          <p className="text-muted-foreground">
+            All repositories available for CI/CD pipelines
+          </p>
+        </div>
+
+        {repositories.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="mx-auto mb-4 w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <GitBranch className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Repositories Found</h3>
+              <p className="text-muted-foreground mb-4">
+                No repositories have been synced yet. Check your installations to sync repositories.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {repositories.map((repository) => (
+              <Card 
+                key={repository._id}
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <GitBranch className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <CardTitle className="text-lg">{repository.name}</CardTitle>
+                        <CardDescription>
+                          {repository.fullName}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end space-y-1">
+                      {repository.private && (
+                        <Badge variant="secondary" className="text-xs">Private</Badge>
+                      )}
+                      {repository.fork && (
+                        <Badge variant="outline" className="text-xs">Fork</Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {repository.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {repository.description}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Language:</span>
+                      <span className="font-medium">
+                        {repository.language || 'Unknown'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                      <div className="flex items-center space-x-1">
+                        <Star className="h-3 w-3" />
+                        <span>{repository.stargazersCount}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <GitFork className="h-3 w-3" />
+                        <span>{repository.forksCount}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Eye className="h-3 w-3" />
+                        <span>{repository.watchersCount}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Updated:</span>
+                      <span>{new Date(repository.updatedAt).toLocaleDateString()}</span>
                     </div>
 
                     <div className="flex space-x-2 pt-2">
@@ -239,7 +369,7 @@ export default function DashboardPage() {
                     <Settings className="h-6 w-6 text-blue-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-2xl font-bold">{repositories.length}</p>
                     <p className="text-sm text-muted-foreground">Repositories</p>
                   </div>
                 </div>

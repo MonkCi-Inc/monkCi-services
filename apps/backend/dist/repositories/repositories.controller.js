@@ -41,8 +41,15 @@ let RepositoriesController = class RepositoriesController {
     remove(id) {
         return this.repositoriesService.remove(id);
     }
-    async syncRepositories(installationId, user) {
-        return { message: 'Repository sync initiated', installationId };
+    async syncRepositories(installationId) {
+        return this.repositoriesService.syncRepositoriesForInstallation(installationId);
+    }
+    async getRepositoryCount() {
+        const count = await this.repositoriesService.getRepositoryCount();
+        return { count };
+    }
+    async syncAllRepositories(user) {
+        return this.repositoriesService.syncAllRepositoriesForUser(user.userId);
     }
 };
 exports.RepositoriesController = RepositoriesController;
@@ -107,14 +114,33 @@ __decorate([
     (0, common_1.Post)('sync/:installationId'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Sync repositories for an installation' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Sync repositories for installation' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Repositories synced successfully.' }),
     __param(0, (0, common_1.Param)('installationId')),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], RepositoriesController.prototype, "syncRepositories", null);
+__decorate([
+    (0, common_1.Get)('debug/count'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get repository count for debugging' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], RepositoriesController.prototype, "getRepositoryCount", null);
+__decorate([
+    (0, common_1.Post)('sync/all'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Sync repositories for all installations' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'All repositories synced successfully.' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], RepositoriesController.prototype, "syncAllRepositories", null);
 exports.RepositoriesController = RepositoriesController = __decorate([
     (0, swagger_1.ApiTags)('repositories'),
     (0, common_1.Controller)('repositories'),
