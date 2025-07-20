@@ -350,7 +350,7 @@ export class AuthService {
     }
   }
 
-  async getInstallationOctokit(installationId: number, userId: string) {
+  async getInstallationOctokit(installationId: number, userId: string): Promise<any> {
     // Verify user has access to this installation
     const installation = await this.installationsService.findByInstallationId(installationId);
     

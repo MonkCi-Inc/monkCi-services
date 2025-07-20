@@ -252,7 +252,6 @@ interface GitHubWorkflowRun {
     forks: number;
     open_issues: number;
     watchers: number;
-    stargazers_count: number;
     master_branch: string;
   };
   head_repository: {
@@ -368,7 +367,6 @@ interface GitHubWorkflowRun {
     forks: number;
     open_issues: number;
     watchers: number;
-    stargazers_count: number;
     master_branch: string;
   };
 }

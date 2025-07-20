@@ -1,20 +1,51 @@
 import { Injectable } from '@nestjs/common';
-import { App } from 'octokit';
 import axios from 'axios';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class GitHubService {
-  private app: App;
+  private appId: string;
+  private privateKey: string;
 
   constructor() {
-    this.app = new App({
-      appId: process.env.GITHUB_APP_ID,
-      privateKey: process.env.GITHUB_PRIVATE_KEY,
-    });
+    this.appId = process.env.GITHUB_APP_ID;
+    this.privateKey = process.env.GITHUB_PRIVATE_KEY;
   }
 
-  async getInstallationOctokit(installationId: number) {
-    return await this.app.getInstallationOctokit(installationId);
+  private generateJWT(): string {
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      iat: now,
+      exp: now + 600, // 10 minutes
+      iss: this.appId,
+    };
+    
+    return jwt.sign(payload, this.privateKey, { algorithm: 'RS256' });
+  }
+
+  async getInstallationOctokit(installationId: number): Promise<any> {
+    const jwt = this.generateJWT();
+    
+    // Get installation access token
+    const response = await axios.post(
+      `https://api.github.com/app/installations/${installationId}/access_tokens`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    );
+
+    const accessToken = response.data.token;
+    
+    // Dynamic import to avoid ES module issues
+    const { Octokit } = await import('@octokit/rest');
+    
+    return new Octokit({
+      auth: accessToken,
+    });
   }
 
   async getUserInstallations(accessToken: string) {

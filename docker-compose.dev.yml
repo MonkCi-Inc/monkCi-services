@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Backend API (Development)
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./apps/backend:/app
+      - /app/node_modules
+    command: npm run start:dev
+
+  # Frontend Application (Development)
+  frontend:
+    build:
+      context: ./apps/console
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./apps/console:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+  # Remove nginx for development
+  nginx:
+    profiles:
+      - production 
