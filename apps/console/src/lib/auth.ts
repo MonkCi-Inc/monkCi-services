@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1');
 
+console.log('API_BASE_URL in src/lib/auth.ts', API_BASE_URL);
 export interface User {
   id: string;
   githubId: number;
@@ -29,6 +30,8 @@ export interface AuthResponse {
 class AuthService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+    console.log('url in src/lib/auth.ts', url);
+    console.log('API_BASE_URL in src/lib/auth.ts', API_BASE_URL);
     const response = await fetch(url, {
       ...options,
       headers: {

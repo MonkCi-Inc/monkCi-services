@@ -1,5 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
+
+console.log('API_BASE_URL in api', API_BASE_URL);
 export interface Repository {
   _id: string;
   repositoryId: number;
@@ -83,7 +85,7 @@ export interface Runner {
 
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${API_BASE_URL}/${endpoint}`;
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -103,52 +105,52 @@ class ApiService {
 
   // Installations
   async getInstallations(): Promise<Installation[]> {
-    return this.request<Installation[]>('/installations');
+    return this.request<Installation[]>('installations');
   }
 
   async getInstallation(id: string): Promise<Installation> {
-    return this.request<Installation>(`/installations/${id}`);
+    return this.request<Installation>(`installations/${id}`);
   }
 
   // Repositories
   async getRepositories(installationId?: string): Promise<Repository[]> {
-    const endpoint = installationId ? `/repositories?installationId=${installationId}` : '/repositories';
+    const endpoint = installationId ? `repositories?installationId=${installationId}` : 'repositories';
     return this.request<Repository[]>(endpoint);
   }
 
   async getRepository(id: string): Promise<Repository> {
-    return this.request<Repository>(`/repositories/${id}`);
+    return this.request<Repository>(`repositories/${id}`);
   }
 
   async getRepositoryRunners(id: string): Promise<{ runners: any[] }> {
-    return this.request<{ runners: any[] }>(`/repositories/${id}/runners`);
+    return this.request<{ runners: any[] }>(`repositories/${id}/runners`);
   }
 
   async getRepositoryWorkflows(id: string): Promise<{ workflows: any[] }> {
-    return this.request<{ workflows: any[] }>(`/repositories/${id}/workflows`);
+    return this.request<{ workflows: any[] }>(`repositories/${id}/workflows`);
   }
 
   async getWorkflowRuns(repositoryId: string, workflowId: string): Promise<{ runs: any[] }> {
-    return this.request<{ runs: any[] }>(`/repositories/${repositoryId}/workflows/${workflowId}/runs`);
+    return this.request<{ runs: any[] }>(`repositories/${repositoryId}/workflows/${workflowId}/runs`);
   }
 
   async getWorkflowRunLogs(repositoryId: string, runId: string): Promise<{ logs: any }> {
-    return this.request<{ logs: any }>(`/repositories/${repositoryId}/runs/${runId}/logs`);
+    return this.request<{ logs: any }>(`repositories/${repositoryId}/runs/${runId}/logs`);
   }
 
   async syncRepositories(installationId: string): Promise<any> {
-    return this.request(`/repositories/sync/${installationId}`, {
+    return this.request(`repositories/sync/${installationId}`, {
       method: 'POST',
     });
   }
 
   // GitHub API operations
   async getInstallationOctokit(installationId: number): Promise<any> {
-    return this.request(`/auth/installation/${installationId}/octokit`);
+    return this.request(`auth/installation/${installationId}/octokit`);
   }
 
   async generateInstallationToken(installationId: number): Promise<any> {
-    return this.request('/auth/installation', {
+    return this.request('auth/installation', {
       method: 'POST',
       body: JSON.stringify({ installationId }),
     });
@@ -156,11 +158,11 @@ class ApiService {
 
   // Runners
   async getRunners(): Promise<Runner[]> {
-    return this.request<Runner[]>('/runners');
+    return this.request<Runner[]>('runners');
   }
 
   async getRunner(id: string): Promise<Runner> {
-    return this.request<Runner>(`/runners/${id}`);
+    return this.request<Runner>(`runners/${id}`);
   }
 
   async createRunner(data: {
@@ -180,7 +182,7 @@ class ApiService {
       ipAddress?: string;
     };
   }): Promise<Runner> {
-    return this.request<Runner>('/runners', {
+    return this.request<Runner>('runners', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -194,26 +196,26 @@ class ApiService {
     environment?: Record<string, string>;
     isActive?: boolean;
   }): Promise<Runner> {
-    return this.request<Runner>(`/runners/${id}`, {
+    return this.request<Runner>(`runners/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
   async deleteRunner(id: string): Promise<void> {
-    return this.request(`/runners/${id}`, {
+    return this.request(`runners/${id}`, {
       method: 'DELETE',
     });
   }
 
   async generateRegistrationToken(): Promise<{ registrationToken: string }> {
-    return this.request<{ registrationToken: string }>('/runners/generate-token', {
+    return this.request<{ registrationToken: string }>('runners/generate-token', {
       method: 'POST',
     });
   }
 
   async getAvailableRunners(): Promise<Runner[]> {
-    return this.request<Runner[]>('/runners/available');
+    return this.request<Runner[]>('runners/available');
   }
 }
 

@@ -177,7 +177,7 @@ export default function Home() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Build time reduction</span>
-                    <span className="text-green-600 font-bold">Up to 8× faster</span>
+                    <span className="text-green-600 font-bold">Up to 10× faster</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Cloud cost savings</span>

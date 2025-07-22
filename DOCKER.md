@@ -27,7 +27,7 @@ GITHUB_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\nYour GitHub App Private Key\
 GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
 
 # Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3001/v1
 NEXT_PUBLIC_GITHUB_APP_SLUG=your-github-app-slug
 ```
 

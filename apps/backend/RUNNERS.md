@@ -42,7 +42,7 @@ node runner-client.js <api-url> <registration-token> <runner-name> [description]
 
 Example:
 ```bash
-node runner-client.js http://localhost:3001 reg_abc123 "My Linux Runner" "High-performance build server" linux x86_64 docker
+node runner-client.js http://localhost:3001/v1 reg_abc123 "My Linux Runner" "High-performance build server" linux x86_64 docker
 ```
 
 #### Option B: Docker (Recommended)

@@ -59,7 +59,7 @@ npm install
 2. Create a new GitHub App with the following settings:
    - **App name**: Monk CI (or your preferred name)
    - **Homepage URL**: `http://localhost:3000`
-   - **Authorization callback URL**: `http://localhost:3001/auth/github/callback`
+   - **Authorization callback URL**: `http://localhost:3001/v1/auth/github/callback`
    - **Webhook**: Disabled (for now)
    - **Permissions**:
      - Repository permissions:
@@ -93,7 +93,7 @@ Edit `.env.local`:
 
 ```env
 # Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3001/v1
 
 # GitHub App Configuration (for backend)
 GITHUB_CLIENT_ID=your_github_app_client_id
@@ -189,7 +189,7 @@ Visit `http://localhost:3000` to see the application.
 ### 2. GitHub OAuth
 - User is redirected to GitHub's OAuth authorization page
 - User authorizes the GitHub App
-- GitHub redirects back to `http://localhost:3001/auth/github/callback` (NestJS backend)
+- GitHub redirects back to `http://localhost:3001/v1/auth/github/callback` (NestJS backend)
 
 ### 3. Database Storage
 - User data is stored/updated in MongoDB

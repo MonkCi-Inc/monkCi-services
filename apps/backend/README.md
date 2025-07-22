@@ -38,7 +38,7 @@ MONGODB_URI=mongodb://localhost:27017/monkci
 GITHUB_APP_ID=your-github-app-id
 GITHUB_CLIENT_ID=your-github-oauth-client-id
 GITHUB_CLIENT_SECRET=your-github-oauth-client-secret
-GITHUB_REDIRECT_URI=http://localhost:3001/auth/github/callback
+GITHUB_REDIRECT_URI=http://localhost:3001/v1/auth/github/callback
 GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
 your-github-app-private-key-here
 -----END RSA PRIVATE KEY-----"
@@ -61,7 +61,7 @@ mongod
 npm run start:dev
 ```
 
-The API will be available at `http://localhost:3001` and Swagger documentation at `http://localhost:3001/api`.
+The API will be available at `http://localhost:3001/v1` and Swagger documentation at `http://localhost:3001/v1/api`.
 
 ## API Endpoints
 
@@ -166,7 +166,7 @@ The API will be available at `http://localhost:3001` and Swagger documentation a
    - **Repository permissions**: Contents (Read), Metadata (Read)
    - **User permissions**: Email addresses (Read)
    - **Organization permissions**: Members (Read) - to access organization installations
-3. Set the callback URL to: `http://localhost:3001/auth/github/callback`
+3. Set the callback URL to: `http://localhost:3001/v1/auth/github/callback`
 4. Generate a private key and download it
 5. Note your App ID and Client ID
 

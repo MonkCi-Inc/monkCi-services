@@ -8,11 +8,31 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const app_module_1 = require("./app.module");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const common_2 = require("@nestjs/common");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.setGlobalPrefix('v1', {
+        exclude: [
+            { path: 'health', method: common_2.RequestMethod.GET },
+            { path: 'api', method: common_2.RequestMethod.ALL },
+        ],
+    });
     app.enableCors({
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: ['http://localhost:3000', 'http://localhost:3001'],
         credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: [
+            'Origin',
+            'X-Requested-With',
+            'Content-Type',
+            'Accept',
+            'Authorization',
+            'Cache-Control',
+            'Pragma',
+            'Cookie',
+            'Set-Cookie',
+        ],
+        exposedHeaders: ['Set-Cookie'],
     });
     app.use((0, cookie_parser_1.default)());
     app.useGlobalPipes(new common_1.ValidationPipe({
