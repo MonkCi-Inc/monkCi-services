@@ -604,10 +604,10 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 <p className="text-muted-foreground mb-4">
                   This repository doesn't have any self-hosted runners configured.
                 </p>
-                <Button>
+                {/* <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Runner
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           ) : (
@@ -701,10 +701,10 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 <p className="text-muted-foreground mb-4">
                   This repository doesn't have any GitHub Actions workflows configured.
                 </p>
-                <Button>
+                {/* <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Workflow
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           ) : (
