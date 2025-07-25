@@ -136,6 +136,7 @@ export default function WorkflowRunsPage({ params }: { params: { id: string; wor
   const [loading, setLoading] = useState(true);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showFailureSummary, setShowFailureSummary] = useState(false);
 
   useEffect(() => {
     const fetchWorkflowData = async () => {
@@ -185,6 +186,14 @@ export default function WorkflowRunsPage({ params }: { params: { id: string; wor
   const handleCloseLogs = () => {
     setSelectedRun(null);
     setRunLogs(null);
+  };
+
+  const handleViewFailureSummary = () => {
+    setShowFailureSummary(true);
+  };
+
+  const handleCloseFailureSummary = () => {
+    setShowFailureSummary(false);
   };
 
   const getStatusIcon = (status: string) => {
@@ -530,6 +539,16 @@ export default function WorkflowRunsPage({ params }: { params: { id: string; wor
                           <FileText className="h-4 w-4 mr-2" />
                           View Logs
                         </Button>
+                        {run.conclusion === 'failure' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={handleViewFailureSummary}
+                          >
+                            <AlertCircle className="h-4 w-4 mr-2" />
+                            View Failure Summary
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -585,6 +604,205 @@ export default function WorkflowRunsPage({ params }: { params: { id: string; wor
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Failure Summary Modal */}
+      {showFailureSummary && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-4xl h-[80vh] flex flex-col">
+            <CardHeader className="flex justify-between items-center border-b">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <div>
+                  <CardTitle className="text-lg">Failure Summary</CardTitle>
+                  <CardDescription>
+                    Analysis of the failed workflow run
+                  </CardDescription>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleCloseFailureSummary}>
+                <X className="h-5 w-5" />
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-auto p-6">
+              <div className="space-y-6">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Failure Analysis</h3>
+                  <p className="text-red-700">
+                    This workflow run failed due to a rate limiting error (HTTP 429) when trying to access Hugging Face Hub resources.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Error Details</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Error Type:</span>
+                        <span className="text-sm text-gray-700">HTTP 429 - Too Many Requests</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Component:</span>
+                        <span className="text-sm text-gray-700">Hugging Face Hub API</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Endpoint:</span>
+                        <span className="text-sm text-gray-700">https://huggingface.co/bert-base-cased/resolve/main/config.json</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Library:</span>
+                        <span className="text-sm text-gray-700">transformers (huggingface_hub)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Error Stack Trace</h4>
+                  <div className="bg-gray-900 rounded-lg p-4 overflow-auto">
+                    <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
+{`.venv/lib/python3.11/site-packages/transformers/utils/hub.py:445: OSError
+________________ HarnessTestCase.test_load_text_classification _________________
+
+response = <Response [429]>, endpoint_name = None
+
+    def hf_raise_for_status(response: Response, endpoint_name: Optional[str] = None) -> None:
+        """
+        Internal version of \`response.raise_for_status()\` that will refine a
+        potential HTTPError. Raised exception will be an instance of \`HfHubHTTPError\`.
+    
+        This helper is meant to be the unique method to raise_for_status when making a call
+        to the Hugging Face Hub.
+    
+        Example:
+        \`\`\`py
+            import requests
+            from huggingface_hub.utils import get_session, hf_raise_for_status, HfHubHTTPError
+    
+            response = get_session().post(...)
+            try:
+                hf_raise_for_status(response)
+            except HfHubHTTPError as e:
+                print(str(e)) # formatted message
+                e.request_id, e.server_message # details returned by server
+    
+                # Complete the error message with additional information once it's raised
+                e.append_to_message("\\n\`create_commit\` expects the repository to exist.")
+                raise
+        \`\`\`
+    
+        Args:
+            response (\`Response\`):
+                Response from the server.
+            endpoint_name (\`str\`, *optional*):
+                Name of the endpoint that has been called. If provided, the error message
+                will be more complete.
+    
+        <Tip warning={true}>
+    
+        Raises when the request has failed:
+    
+            - [\`~utils.RepositoryNotFoundError\`]
+                If the repository to download from cannot be found. This may be because it
+                doesn't exist, because \`repo_type\` is not set correctly, or because the repo
+                is \`private\` and you do not have access.
+            - [\`~utils.GatedRepoError\`]
+                If the repository exists but is gated and the user is not on the authorized
+                list.
+            - [\`~utils.RevisionNotFoundError\`]
+                If the repository exists but the revision couldn't be find.
+            - [\`~utils.EntryNotFoundError\`]
+                If the repository exists but the entry (e.g. the requested file) couldn't be
+                find.
+            - [\`~utils.BadRequestError\`]
+                If request failed with a HTTP 400 BadRequest error.
+            - [\`~utils.HfHubHTTPError\`]
+                If request failed for a reason not listed above.
+    
+        </Tip>
+        """
+        try:
+>           response.raise_for_status()
+
+.venv/lib/python3.11/site-packages/huggingface_hub/utils/_errors.py:304: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Response [429]>
+
+    def raise_for_status(self):
+        """Raises :class:\`HTTPError\`, if one occurred."""
+
+        http_error_msg = ""
+        if isinstance(self.reason, bytes):
+            # We attempt to decode utf-8 first because some servers
+            # choose to localize their reason strings. If the string
+            # isn't utf-8, we fall back to iso-8859-1 for all other
+            # encodings. (See PR #3538)
+            try:
+                reason = self.reason.decode("utf-8")
+            except UnicodeDecodeError:
+                reason = self.reason.decode("iso-8859-1")
+        else:
+            reason = self.reason
+
+        if 400 <= self.status_code < 500:
+            http_error_msg = (
+                f"{self.status_code} Client Error: {reason} for url: {self.url}"
+            )
+
+        elif 500 <= self.status_code < 600:
+            http_error_msg = (
+                f"{self.status_code} Server Error: {reason} for url: {self.url}"
+            )
+
+        if http_error_msg:
+>           raise HTTPError(http_error_msg, response=self)
+E           requests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: https://huggingface.co/bert-base-cased/resolve/main/config.json`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900">Root Cause</h4>
+                    <div className="bg-orange-50 rounded-lg p-4">
+                      <ul className="text-sm text-orange-700 space-y-2">
+                        <li>• Rate limiting from Hugging Face Hub API</li>
+                        <li>• Too many requests to the same endpoint</li>
+                        <li>• Missing or invalid authentication token</li>
+                        <li>• CI environment hitting API limits</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900">Solutions</h4>
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <ul className="text-sm text-blue-700 space-y-2">
+                        <li>• Add HF_TOKEN environment variable to CI</li>
+                        <li>• Implement request caching in CI</li>
+                        <li>• Use local model caching</li>
+                        <li>• Add retry logic with exponential backoff</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Next Steps</h4>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-yellow-800 text-sm">
+                      1. Add HF_TOKEN to your CI environment variables<br/>
+                      2. Configure model caching to avoid repeated downloads<br/>
+                      3. Implement proper error handling for rate limits<br/>
+                      4. Consider using a different model or local alternatives
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
