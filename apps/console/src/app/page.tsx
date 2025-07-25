@@ -37,8 +37,7 @@ export default function Home() {
             <span className="text-primary">Monk CI</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Stop waiting for builds. Get 3× faster CPUs and 20× faster NVMe cache. 
-            Ship up to 8× sooner and slash cloud costs by 75%.
+            the world's fastest CI runner with 10× faster builds, 20× faster cache, 40× faster Docker engine, and 75% lower spend — built for the AI era.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signin">
