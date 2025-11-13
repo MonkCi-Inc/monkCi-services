@@ -12,7 +12,8 @@ services:
       - ./apps/backend:/app
       - /app/node_modules
     command: npm run start:dev
-
+    networks:
+      - monkci-network
   # Frontend Application (Development)
   frontend:
     build:
@@ -26,7 +27,25 @@ services:
       - /app/.next
     command: npm run dev
 
+  mongodb:
+    image: mongo:7.0
+    container_name: monkci-mongodb
+    restart: unless-stopped
+    # environment:
+    #   MONGO_INITDB_ROOT_USERNAME: admin
+    #   MONGO_INITDB_ROOT_PASSWORD: password
+    #   MONGO_INITDB_DATABASE: monkci
+    ports:
+      - "27020:27017"
+    networks:
+      - monkci-network
+
   # Remove nginx for development
   nginx:
     profiles:
       - production 
+
+
+networks:
+  monkci-network:
+    driver: bridge 
