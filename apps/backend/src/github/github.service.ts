@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
-
+import { Octokit } from "@octokit/rest";
 @Injectable()
 export class GitHubService {
   private appId: string;
@@ -39,9 +39,6 @@ export class GitHubService {
     );
 
     const accessToken = response.data.token;
-    
-    // Dynamic import to avoid ES module issues
-    const { Octokit } = await import('@octokit/rest');
     
     return new Octokit({
       auth: accessToken,
