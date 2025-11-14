@@ -18,13 +18,14 @@ import {
   Calendar,
   Server
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { authService, User } from "@/lib/auth";
+import { authService, User, handleUserRedirect } from "@/lib/auth";
 import { apiService, Installation, Repository } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
@@ -37,6 +38,12 @@ export default function DashboardPage() {
         console.log('Dashboard - Loading user data...');
         const userData = await authService.getCurrentUser();
         console.log('Dashboard - User data loaded:', userData);
+        
+        // Check if redirect is needed based on user state
+        if (handleUserRedirect(userData, router, pathname)) {
+          return; // Redirect was performed, don't continue
+        }
+        
         setUser(userData);
         
         // Load installations from the API
@@ -61,7 +68,7 @@ export default function DashboardPage() {
     };
 
     loadDashboardData();
-  }, [router]);
+  }, [router, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -125,12 +132,12 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  <AvatarFallback>{user.name?.charAt(0) || user.login.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={user.avatarUrl} alt={user.name || user.login || 'User'} />
+                  <AvatarFallback>{(user.name || user.login || 'U').charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block">
-                  <p className="text-sm font-medium">{user.name || user.login}</p>
-                  <p className="text-xs text-muted-foreground">@{user.login}</p>
+                  <p className="text-sm font-medium">{user.name || user.login || 'User'}</p>
+                  <p className="text-xs text-muted-foreground">@{user.login || 'user'}</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/runners')}>

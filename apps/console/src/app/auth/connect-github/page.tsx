@@ -3,12 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github } from "lucide-react";
-import { authService } from "@/lib/auth";
+import { authService, User, handleUserRedirect } from "@/lib/auth";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function ConnectGitHubPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [emailAuthId, setEmailAuthId] = useState<string | null>(null);
 
@@ -17,6 +18,12 @@ export default function ConnectGitHubPage() {
     const getEmailAuthId = async () => {
       try {
         const user = await authService.getCurrentUser();
+        
+        // Check if redirect is needed based on user state
+        if (handleUserRedirect(user, router, pathname)) {
+          return; // Redirect was performed, don't continue
+        }
+        
         // Try to get emailAuthId from user object first
         if (user.emailAuthId) {
           setEmailAuthId(user.emailAuthId);
@@ -48,7 +55,7 @@ export default function ConnectGitHubPage() {
     };
 
     getEmailAuthId();
-  }, [router]);
+  }, [router, pathname]);
 
   const handleConnectGitHub = () => {
     setLoading(true);

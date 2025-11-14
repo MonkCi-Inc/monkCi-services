@@ -3,12 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github, Mail, Lock, Eye, EyeOff, Info } from "lucide-react";
-import { authService } from "@/lib/auth";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { authService, User, handleUserRedirect } from "@/lib/auth";
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function SignInPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +17,24 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Check if user is already authenticated and redirect if needed
+    const checkAuth = async () => {
+      try {
+        const user = await authService.getCurrentUser();
+        // If user is fully authenticated (has both IDs and installations), redirect to dashboard
+        if (user.userId && user.emailAuthId && user.githubId && user.installations && user.installations.length > 0) {
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        // User is not authenticated, stay on signin page
+        console.log('User not authenticated, staying on signin page');
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleGitHubSignIn = () => {
     authService.initiateGitHubAuth();
@@ -192,18 +211,6 @@ export default function SignInPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Demo Credentials Display */}
-                {isLogin && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-xs text-blue-800">
-                      <p className="font-medium mb-1">Demo Account:</p>
-                      <p>Email: <span className="font-mono">demo@monkci.com</span></p>
-                      <p>Password: <span className="font-mono">demo123</span></p>
-                    </div>
-                  </div>
-                )}
 
                 {error && (
                   <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">

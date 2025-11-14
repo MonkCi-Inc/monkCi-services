@@ -5,13 +5,14 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/
 
 console.log('API_BASE_URL in src/lib/auth.ts', API_BASE_URL);
 export interface User {
-  id?: string;
+  userId?: string;
   githubId?: number;
   login?: string;
-  name: string;
-  email: string;
+  name?: string | null;
+  email?: string | null;
   avatarUrl?: string;
   emailAuthId?: string;
+  installations?: Installation[];
 }
 
 export interface Installation {
@@ -192,4 +193,84 @@ export async function refreshUserSession(userSession: UserSession): Promise<User
     console.error('Failed to refresh user session:', error);
     return null;
   }
+}
+
+/**
+ * Determines the appropriate redirect path based on user authentication state
+ * @param user - The current user object from the API
+ * @returns The redirect path or null if no redirect is needed
+ */
+export function getRedirectPath(user: User | null): string | null {
+  if (!user) {
+    return '/auth/signin';
+  }
+
+  // Check if both emailAuthId and userId are null or empty
+  const hasEmailAuth = user.emailAuthId && user.emailAuthId.trim() !== '';
+  const hasUserId = user.userId && user.userId.trim() !== '';
+
+  // If both are null/empty, redirect to signin
+  if (!hasEmailAuth && !hasUserId) {
+    return '/auth/signin';
+  }
+  // If emailAuth exists but no GitHub connection (no userId or githubId)
+  if (hasEmailAuth && (!hasUserId || !user.githubId)) {
+    return '/auth/connect-github';
+  }
+  // If both IDs exist but no installations
+  if (hasEmailAuth && hasUserId && user.githubId) {
+    const hasInstallations = user.installations && user.installations.length > 0;
+    if (!hasInstallations) {
+      // Redirect to GitHub App installation
+      const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
+      if (appSlug) {
+       
+         return `https://github.com/apps/${appSlug}/installations/new`;
+      }
+      // If app slug is not configured, still redirect to connect-github
+      return '/auth/connect-github';
+    }
+  }
+
+  // If all are present (emailAuthId, userId, githubId, and installations), 
+  // ensure user does NOT stay on /auth/signin or /auth/connect-github,
+  // and should be redirected to /dashboard
+  if (hasEmailAuth && hasUserId && user.githubId && user.installations && user.installations.length > 0) {
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/auth/signin' || currentPath === '/auth/connect-github') {
+        return '/dashboard';
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Hook-like function to handle user redirect logic in client components
+ * @param user - The current user object
+ * @param router - Next.js router instance
+ * @param currentPath - The current pathname to avoid redirecting to the same page
+ * @returns true if redirect was performed, false otherwise
+ */
+export function handleUserRedirect(
+  user: User | null,
+  router: any,
+  currentPath?: string
+): boolean {
+  const redirectPath = getRedirectPath(user);
+  
+  if (redirectPath && redirectPath !== currentPath) {
+    // Check if it's an external URL (GitHub App installation)
+    if (redirectPath.startsWith('http://') || redirectPath.startsWith('https://')) {
+      window.location.href = redirectPath;
+      return true;
+    }
+    
+    router.push(redirectPath);
+    return true;
+  }
+  
+  return false;
 } 
