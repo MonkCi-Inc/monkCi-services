@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export type UserDocument = User & Document;
 
@@ -7,6 +7,9 @@ export type UserDocument = User & Document;
 export class User {
   @Prop({ required: true, unique: true })
   githubId: number;
+
+  @Prop({ type: Types.ObjectId, ref: 'EmailAuth', required: false })
+  emailAuthId?: Types.ObjectId; // One-to-one mapping to EmailAuth
 
   @Prop({ required: true })
   login: string;

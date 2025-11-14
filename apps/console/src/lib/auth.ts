@@ -5,12 +5,13 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/
 
 console.log('API_BASE_URL in src/lib/auth.ts', API_BASE_URL);
 export interface User {
-  id: string;
-  githubId: number;
-  login: string;
+  id?: string;
+  githubId?: number;
+  login?: string;
   name: string;
   email: string;
-  avatarUrl: string;
+  avatarUrl?: string;
+  emailAuthId?: string;
 }
 
 export interface Installation {
@@ -23,8 +24,14 @@ export interface Installation {
 
 export interface AuthResponse {
   access_token: string;
-  user: User;
-  installations: Installation[];
+  user: User | null;
+  emailAuth?: {
+    id: string;
+    email: string;
+    name?: string;
+  };
+  hasGitHubLinked: boolean;
+  installations?: Installation[];
 }
 
 class AuthService {
@@ -68,9 +75,23 @@ class AuthService {
     return this.request(`/auth/installation/${installationId}/octokit`);
   }
 
+  async login(email: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async register(email: string, password: string, name?: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    });
+  }
+
   // Redirect to GitHub OAuth
-  initiateGitHubAuth(state?: string): void {
-    const authUrl = `${API_BASE_URL}/auth/github${state ? `?state=${state}` : ''}`;
+  initiateGitHubAuth(emailAuthId?: string): void {
+    const authUrl = `${API_BASE_URL}/auth/github${emailAuthId ? `?emailAuthId=${emailAuthId}` : ''}`;
     window.location.href = authUrl;
   }
 
@@ -90,13 +111,14 @@ export const authService = new AuthService();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-jwt-secret-for-development-only';
 
 export interface UserSession {
-  userId: string; // MongoDB ObjectId as string
-  githubId: number;
-  login: string;
+  userId?: string; // MongoDB ObjectId as string (optional for email-only users)
+  githubId?: number; // Optional for email-only users
+  login?: string; // Optional for email-only users
   name: string;
   email: string;
-  avatarUrl: string;
-  installations: Array<{
+  avatarUrl?: string; // Optional for email-only users
+  emailAuthId?: string; // Optional for GitHub-only users
+  installations?: Array<{
     id: number;
     accountLogin: string;
     accountType: 'User' | 'Organization';

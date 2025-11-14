@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Github, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Github, Mail, Lock, Eye, EyeOff, Info } from "lucide-react";
 import { authService } from "@/lib/auth";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -27,29 +27,21 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const body = isLogin 
-        ? { email, password }
-        : { email, password, name };
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1'}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || (isLogin ? 'Login failed' : 'Registration failed'));
+      let result;
+      if (isLogin) {
+        result = await authService.login(email, password);
+      } else {
+        result = await authService.register(email, password, name);
       }
 
-      // Cookie is set automatically by the backend
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Check if GitHub is linked
+      if (result.hasGitHubLinked && result.user) {
+        // User has GitHub linked, redirect to dashboard
+        router.push('/dashboard');
+      } else {
+        // User doesn't have GitHub linked, redirect to connect GitHub page
+        router.push('/auth/connect-github');
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -200,6 +192,18 @@ export default function SignInPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Demo Credentials Display */}
+                {isLogin && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-blue-800">
+                      <p className="font-medium mb-1">Demo Account:</p>
+                      <p>Email: <span className="font-mono">demo@monkci.com</span></p>
+                      <p>Password: <span className="font-mono">demo123</span></p>
+                    </div>
+                  </div>
+                )}
 
                 {error && (
                   <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">

@@ -25,12 +25,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     return {
       userId: payload.userId,
-      githubId: payload.githubId,
-      login: payload.login,
+      githubId: payload.githubId, // Optional - may not exist for email-only users
+      login: payload.login, // Optional - may not exist for email-only users
       name: payload.name,
       email: payload.email,
-      avatarUrl: payload.avatarUrl,
-      installations: payload.installations,
+      avatarUrl: payload.avatarUrl, // Optional - may not exist for email-only users
+      emailAuthId: payload.emailAuthId, // Optional - may not exist for GitHub-only users
+      installations: payload.installations || [], // Optional - may not exist for email-only users
     };
   }
 } 

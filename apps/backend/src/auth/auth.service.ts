@@ -4,6 +4,7 @@ import { UsersService } from '../users/users.service';
 import { InstallationsService } from '../installations/installations.service';
 import { RepositoriesService } from '../repositories/repositories.service';
 import { GitHubService } from '../github/github.service';
+import { EmailAuthService } from '../users/email-auth.service';
 
 @Injectable()
 export class AuthService {
@@ -12,10 +13,100 @@ export class AuthService {
     private installationsService: InstallationsService,
     private repositoriesService: RepositoriesService,
     private githubService: GitHubService,
+    private emailAuthService: EmailAuthService,
     private jwtService: JwtService,
   ) {}
 
-  async validateGithubCode(code: string) {
+  async loginWithEmailPassword(email: string, password: string) {
+    try {
+      // Validate against EmailAuth collection (handles all users including demo)
+      const emailAuth = await this.emailAuthService.validatePassword(email, password);
+      if (!emailAuth) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      // Check if linked to User
+      let user = null;
+      let hasGitHubLinked = false;
+      if (emailAuth.userId) {
+        user = await this.usersService.findOne(emailAuth.userId.toString());
+        hasGitHubLinked = !!user;
+      }
+
+      // Create JWT payload
+      const payload: any = {
+        emailAuthId: emailAuth['id'].toString(),
+        email: emailAuth.email,
+        name: emailAuth.name,
+      };
+
+      if (user) {
+        payload.userId = user['id'].toString();
+        payload.githubId = user.githubId;
+        payload.login = user.login;
+        payload.avatarUrl = user.avatarUrl;
+      }
+
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+        emailAuth: {
+          id: emailAuth['id'],
+          email: emailAuth.email,
+          name: emailAuth.name,
+        },
+        user: user ? {
+          id: user['id'],
+          githubId: user.githubId,
+          login: user.login,
+          name: user.name,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+        } : null,
+        hasGitHubLinked,
+      };
+    } catch (error) {
+      console.log('error in loginWithEmailPassword', error);
+      throw new UnauthorizedException('Login failed: ' + error.message);
+    }
+  }
+
+  async registerWithEmailPassword(email: string, password: string, name?: string) {
+    try {
+      // Create EmailAuth record
+      const emailAuth = await this.emailAuthService.create({
+        email,
+        password,
+        name,
+      });
+
+      // Create JWT payload
+      const payload = {
+        emailAuthId: emailAuth['id'].toString(),
+        email: emailAuth.email,
+        name: emailAuth.name,
+      };
+
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+        emailAuth: {
+          id: emailAuth['id'],
+          email: emailAuth.email,
+          name: emailAuth.name,
+        },
+        user: null,
+        hasGitHubLinked: false,
+      };
+    } catch (error) {
+      console.log('error in registerWithEmailPassword', error);
+      throw new UnauthorizedException('Registration failed: ' + error.message);
+    }
+  }
+
+  async validateGithubCode(code: string, emailAuthId?: string) {
     try {
       // Check for required environment variables
       if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
@@ -40,11 +131,26 @@ export class AuthService {
       // Get user's repositories using GitHubService
       const userRepositories = await this.githubService.getUserRepositories(accessToken, userData.repos_url);
       
+      // If emailAuthId is provided, this is an email user linking GitHub
+      let emailAuth = null;
+      if (emailAuthId) {
+        emailAuth = await this.emailAuthService.findById(emailAuthId);
+        if (!emailAuth) {
+          throw new UnauthorizedException('EmailAuth not found');
+        }
+      }
+
       // Check if user exists in database
       let user = await this.usersService.findByGithubId(userData.id);
 
       if (user) {
         // Update existing user
+        // If emailAuth is provided, link it to this user
+        if (emailAuth && !user.emailAuthId) {
+          await this.usersService.linkEmailAuth(user['id'].toString(), emailAuth._id.toString());
+          await this.emailAuthService.linkToUser(emailAuth._id.toString(), user['id'].toString());
+          user = await this.usersService.findOne(user['id'].toString());
+        }
         user = await this.usersService.updateByGithubId(userData.id, {
           login: userData.login,
           name: userData.name,
@@ -83,7 +189,7 @@ export class AuthService {
         });
       } else {
         // Create new user
-        user = await this.usersService.create({
+        const createUserDto: any = {
           githubId: userData.id,
           login: userData.login,
           name: userData.name,
@@ -119,7 +225,19 @@ export class AuthService {
           following: userData.following,
           createdAt: userData.created_at,
           updatedAt: userData.updated_at,
-        });
+        };
+
+        // If emailAuth is provided, link it to the new user
+        if (emailAuth) {
+          createUserDto.emailAuthId = emailAuth['id'];
+        }
+
+        user = await this.usersService.create(createUserDto);
+
+        // Link EmailAuth to User bidirectionally
+        if (emailAuth) {
+          await this.emailAuthService.linkToUser(emailAuth['id'].toString(), user['id'].toString());
+        }
       }
 
       // Sync user repositories
@@ -169,7 +287,7 @@ export class AuthService {
       }
 
       // Create JWT token
-      const payload = {
+      const payload: any = {
         userId: user['id'].toString(),
         githubId: user.githubId,
         login: user.login,
@@ -184,6 +302,11 @@ export class AuthService {
           repositorySelection: inst.repositorySelection,
         })),
       };
+
+      // Include emailAuthId if linked
+      if (user.emailAuthId) {
+        payload.emailAuthId = user.emailAuthId.toString();
+      }
 
       console.log('Auth Service - Creating JWT with payload:', {
         userId: payload.userId,

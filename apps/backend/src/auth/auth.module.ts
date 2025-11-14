@@ -8,6 +8,7 @@ import { UsersModule } from '../users/users.module';
 import { InstallationsModule } from '../installations/installations.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
 import { GitHubModule } from '../github/github.module';
+import { EmailAuthModule } from '../users/email-auth.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { GitHubModule } from '../github/github.module';
     InstallationsModule,
     RepositoriesModule,
     GitHubModule,
+    EmailAuthModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'fallback-jwt-secret-for-development-only',

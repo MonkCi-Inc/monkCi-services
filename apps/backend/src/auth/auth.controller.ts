@@ -15,17 +15,73 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@ne
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { LoginDto, RegisterDto } from '../users/dto/create-email-auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('login')
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiResponse({ status: 200, description: 'User logged in successfully.' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials.' })
+  async login(@Body() loginDto: LoginDto, @Res() res: Response) {
+    try {
+      const result = await this.authService.loginWithEmailPassword(loginDto.email, loginDto.password);
+      
+      // Set JWT token as httpOnly cookie
+      res.cookie('monkci_token', result.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days
+      });
+
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error) {
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: error.message });
+    }
+  }
+
+  @Post('register')
+  @ApiOperation({ summary: 'Register with email and password' })
+  @ApiResponse({ status: 201, description: 'User registered successfully.' })
+  @ApiResponse({ status: 409, description: 'Email already exists.' })
+  async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
+    try {
+      const result = await this.authService.registerWithEmailPassword(
+        registerDto.email,
+        registerDto.password,
+        registerDto.name,
+      );
+      
+      // Set JWT token as httpOnly cookie
+      res.cookie('monkci_token', result.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days
+      });
+
+      return res.status(HttpStatus.CREATED).json(result);
+    } catch (error) {
+      return res.status(HttpStatus.CONFLICT).json({ message: error.message });
+    }
+  }
+
   @Get('github')
   @ApiOperation({ summary: 'Initiate GitHub OAuth flow' })
   @ApiQuery({ name: 'state', required: false, description: 'OAuth state parameter' })
-  async githubAuth(@Query('state') state?: string, @Res() res?: Response) {
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=repo,user:email&state=${state || ''}`;
+  @ApiQuery({ name: 'emailAuthId', required: false, description: 'EmailAuth ID for linking' })
+  async githubAuth(
+    @Query('state') state?: string,
+    @Query('emailAuthId') emailAuthId?: string,
+    @Res() res?: Response,
+  ) {
+    // Include emailAuthId in state if provided
+    const stateParam = emailAuthId ? `emailAuthId:${emailAuthId}` : (state || '');
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=repo,user:email&state=${stateParam}`;
     if (res) {
       console.log('redirecting to', githubAuthUrl);
       return res.redirect(githubAuthUrl);
@@ -44,7 +100,13 @@ export class AuthController {
     @Res() res?: Response,
   ) {
     try {
-      const result = await this.authService.validateGithubCode(code);
+      // Extract emailAuthId from state if present
+      let emailAuthId: string | undefined;
+      if (state && state.startsWith('emailAuthId:')) {
+        emailAuthId = state.replace('emailAuthId:', '');
+      }
+
+      const result = await this.authService.validateGithubCode(code, emailAuthId);
       
       if (res) {
         // Set JWT token as httpOnly cookie

@@ -42,4 +42,10 @@ export class UsersService {
   async remove(id: string): Promise<User> {
     return this.userModel.findByIdAndDelete(id).exec();
   }
+
+  async linkEmailAuth(userId: string, emailAuthId: string): Promise<User> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { emailAuthId }, { new: true })
+      .exec();
+  }
 } 
