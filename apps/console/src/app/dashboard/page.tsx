@@ -3,49 +3,31 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Building2, 
   User as UserIcon, 
   GitBranch, 
   Settings, 
-  LogOut,
   Plus,
   Play,
   GitFork,
   Star,
   Eye,
-  Calendar,
-  Server
 } from "lucide-react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { authService, User, handleUserRedirect } from "@/lib/auth";
 import { apiService, Installation, Repository } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated and load data
+    // Load dashboard data
     const loadDashboardData = async () => {
       try {
-        console.log('Dashboard - Loading user data...');
-        const userData = await authService.getCurrentUser();
-        console.log('Dashboard - User data loaded:', userData);
-        
-        // Check if redirect is needed based on user state
-        if (handleUserRedirect(userData, router, pathname)) {
-          return; // Redirect was performed, don't continue
-        }
-        
-        setUser(userData);
-        
         // Load installations from the API
         console.log('Dashboard - Loading installations...');
         const installationsData = await apiService.getInstallations();
@@ -59,25 +41,13 @@ export default function DashboardPage() {
         setRepositories(repositoriesData);
       } catch (error) {
         console.error('Dashboard data load failed:', error);
-        // Clear the invalid token
-        document.cookie = 'monkci_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        router.push('/auth/signin');
       } finally {
         setLoading(false);
       }
     };
 
     loadDashboardData();
-  }, [router, pathname]);
-
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-      router.push('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
+  }, []);
 
   const handleInstallationClick = (installation: Installation) => {
     router.push(`/dashboard/installation/${installation._id}`);
@@ -103,58 +73,19 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="container mx-auto px-4 py-8 md:px-6 lg:px-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                <span className="text-sm font-bold text-primary-foreground">M</span>
-              </div>
-              <h1 className="text-xl font-semibold">Monk CI Dashboard</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.avatarUrl} alt={user.name || user.login || 'User'} />
-                  <AvatarFallback>{(user.name || user.login || 'U').charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="hidden md:block">
-                  <p className="text-sm font-medium">{user.name || user.login || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">@{user.login || 'user'}</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/runners')}>
-                <Server className="h-4 w-4 mr-2" />
-                Runners
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 md:px-6 lg:px-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Your GitHub Installations</h2>
           <p className="text-muted-foreground">
@@ -384,7 +315,6 @@ export default function DashboardPage() {
             </Card>
           </div>
         </div>
-      </main>
     </div>
   );
 } 

@@ -213,34 +213,18 @@ export function getRedirectPath(user: User | null): string | null {
   if (!hasEmailAuth && !hasUserId) {
     return '/auth/signin';
   }
-  // If emailAuth exists but no GitHub connection (no userId or githubId)
-  if (hasEmailAuth && (!hasUserId || !user.githubId)) {
-    return '/auth/connect-github';
-  }
-  // If both IDs exist but no installations
-  if (hasEmailAuth && hasUserId && user.githubId) {
-    const hasInstallations = user.installations && user.installations.length > 0;
-    if (!hasInstallations) {
-      // Redirect to GitHub App installation
-      const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
-      if (appSlug) {
-       
-         return `https://github.com/apps/${appSlug}/installations/new`;
-      }
-      // If app slug is not configured, still redirect to dashboard
+
+  // All authenticated users should be able to access dashboard
+  // If user is on signin page, redirect to dashboard
+  // Allow users to stay on connect-github page if they need to connect GitHub
+  if (typeof window !== 'undefined') {
+    const currentPath = window.location.pathname;
+    if (currentPath === '/auth/signin') {
       return '/dashboard';
     }
-  }
-
-  // If all are present (emailAuthId, userId, githubId, and installations), 
-  // ensure user does NOT stay on /auth/signin,
-  // and should be redirected to /dashboard
-  if (hasEmailAuth && hasUserId && user.githubId && user.installations && user.installations.length > 0) {
-    if (typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
-      if (currentPath === '/auth/signin' || currentPath === '/auth/connect-github') {
-        return '/dashboard';
-      }
+    // Only redirect from connect-github if user already has GitHub connected
+    if (currentPath === '/dashboard/connect-github' && hasUserId && user.githubId) {
+      return '/dashboard';
     }
   }
 

@@ -134,13 +134,6 @@ export default function RunnersPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={handleBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                <span className="text-sm font-bold text-primary-foreground">M</span>
-              </div>
               <h1 className="text-xl font-semibold">Self-Hosted Runners</h1>
             </div>
             

@@ -53,14 +53,8 @@ export default function SignInPage() {
         result = await authService.register(email, password, name);
       }
 
-      // Check if GitHub is linked
-      if (result.hasGitHubLinked && result.user) {
-        // User has GitHub linked, redirect to dashboard
-        router.push('/dashboard');
-      } else {
-        // User doesn't have GitHub linked, redirect to connect GitHub page
-        router.push('/auth/connect-github');
-      }
+      // Always redirect to dashboard after successful login/register
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {

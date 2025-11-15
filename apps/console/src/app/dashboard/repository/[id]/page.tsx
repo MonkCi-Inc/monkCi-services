@@ -496,9 +496,6 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                <span className="text-sm font-bold text-primary-foreground">M</span>
-              </div>
               <h1 className="text-xl font-semibold">
                 {repository.fullName}
               </h1>
