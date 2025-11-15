@@ -227,13 +227,13 @@ export function getRedirectPath(user: User | null): string | null {
        
          return `https://github.com/apps/${appSlug}/installations/new`;
       }
-      // If app slug is not configured, still redirect to connect-github
+      // If app slug is not configured, still redirect to dashboard
       return '/dashboard';
     }
   }
 
   // If all are present (emailAuthId, userId, githubId, and installations), 
-  // ensure user does NOT stay on /auth/signin or /auth/connect-github,
+  // ensure user does NOT stay on /auth/signin,
   // and should be redirected to /dashboard
   if (hasEmailAuth && hasUserId && user.githubId && user.installations && user.installations.length > 0) {
     if (typeof window !== 'undefined') {

@@ -16,11 +16,15 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto, RegisterDto } from '../users/dto/create-email-auth.dto';
+import { InstallationsService } from '../installations/installations.service';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly installationsService: InstallationsService,
+  ) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
@@ -176,6 +180,12 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Return current user information.' })
   async getCurrentUser(@CurrentUser() user: any) {
     console.log('Auth Controller - getCurrentUser called with user:', user ? 'User exists' : 'No user');
+    
+    if (user?.userId) {
+        const installations = await this.installationsService.findByUserId(user.userId);
+        console.log('Auth Controller - installations:', installations);
+        user.installations = installations;
+    }
     return user;
   }
 
