@@ -39,26 +39,38 @@ export function useRepositories(installationId?: string | number) {
 }
 
 export function useRepository(id: string | number) {
+  // Normalize ID to string for consistent cache keys
+  const normalizedId = String(id);
   return useQuery({
-    queryKey: queryKeys.repository(id),
-    queryFn: () => apiService.getRepository(String(id)),
+    queryKey: queryKeys.repository(normalizedId),
+    queryFn: () => apiService.getRepository(normalizedId),
     enabled: !!id,
+    // Use default refetchOnMount behavior (only refetch if stale)
+    // This respects staleTime - won't refetch if data is fresh
   });
 }
 
 export function useRepositoryRunners(id: string | number) {
+  // Normalize ID to string for consistent cache keys
+  const normalizedId = String(id);
   return useQuery({
-    queryKey: queryKeys.repositoryRunners(id),
-    queryFn: () => apiService.getRepositoryRunners(String(id)),
+    queryKey: queryKeys.repositoryRunners(normalizedId),
+    queryFn: () => apiService.getRepositoryRunners(normalizedId),
     enabled: !!id,
+    // Use default refetchOnMount behavior (only refetch if stale)
+    // This respects staleTime - won't refetch if data is fresh
   });
 }
 
 export function useRepositoryWorkflows(id: string | number) {
+  // Normalize ID to string for consistent cache keys
+  const normalizedId = String(id);
   return useQuery({
-    queryKey: queryKeys.repositoryWorkflows(id),
-    queryFn: () => apiService.getRepositoryWorkflows(String(id)),
+    queryKey: queryKeys.repositoryWorkflows(normalizedId),
+    queryFn: () => apiService.getRepositoryWorkflows(normalizedId),
     enabled: !!id,
+    // Use default refetchOnMount behavior (only refetch if stale)
+    // This respects staleTime - won't refetch if data is fresh
   });
 }
 

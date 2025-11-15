@@ -24,8 +24,8 @@ import {
   Plus
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { apiService, Repository } from "@/lib/api";
+import { Repository } from "@/lib/api";
+import { useRepository, useRepositoryRunners, useRepositoryWorkflows } from "@/lib/queries";
 
 interface GitHubRunner {
   id: number;
@@ -373,35 +373,17 @@ interface GitHubWorkflowRun {
 
 export default function RepositoryPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [repository, setRepository] = useState<Repository | null>(null);
-  const [runners, setRunners] = useState<GitHubRunner[]>([]);
-  const [workflows, setWorkflows] = useState<GitHubWorkflow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchRepositoryData = async () => {
-      try {
-        // Get repository details
-        const repositoryData = await apiService.getRepository(params.id);
-        setRepository(repositoryData);
-        
-        // Get runners for this repository
-        const runnersData = await apiService.getRepositoryRunners(params.id);
-        setRunners(runnersData.runners || []);
-
-        // Get workflows for this repository
-        const workflowsData = await apiService.getRepositoryWorkflows(params.id);
-        setWorkflows(workflowsData.workflows || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRepositoryData();
-  }, [params.id]);
+  
+  // Use TanStack Query hooks - data is cached and shared across pages
+  // This prevents refetching when navigating back to the same repository
+  const { data: repository, isLoading: repositoryLoading, error: repositoryError } = useRepository(params.id);
+  const { data: runnersData, isLoading: runnersLoading } = useRepositoryRunners(params.id);
+  const { data: workflowsData, isLoading: workflowsLoading } = useRepositoryWorkflows(params.id);
+  
+  const loading = repositoryLoading || runnersLoading || workflowsLoading;
+  const error = repositoryError ? (repositoryError instanceof Error ? repositoryError.message : 'An error occurred') : null;
+  const runners = runnersData?.runners || [];
+  const workflows = workflowsData?.workflows || [];
 
   const handleBack = () => {
     router.push('/dashboard');
@@ -641,7 +623,7 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
 
                       {runner.labels.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {runner.labels.slice(0, 3).map((label) => (
+                          {runner.labels.slice(0, 3).map((label: { id: number; name: string }) => (
                             <Badge key={label.id} variant="outline" className="text-xs">
                               {label.name}
                             </Badge>
