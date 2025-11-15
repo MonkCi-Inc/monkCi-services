@@ -228,7 +228,7 @@ export function getRedirectPath(user: User | null): string | null {
          return `https://github.com/apps/${appSlug}/installations/new`;
       }
       // If app slug is not configured, still redirect to connect-github
-      return '/auth/connect-github';
+      return '/dashboard';
     }
   }
 
@@ -264,10 +264,9 @@ export function handleUserRedirect(
   if (redirectPath && redirectPath !== currentPath) {
     // Check if it's an external URL (GitHub App installation)
     if (redirectPath.startsWith('http://') || redirectPath.startsWith('https://')) {
-      window.location.href = redirectPath;
-      return true;
+      window.open(redirectPath, '_blank');
+      return false;
     }
-    
     router.push(redirectPath);
     return true;
   }
