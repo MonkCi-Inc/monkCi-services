@@ -10,20 +10,21 @@ import {
   Param,
   UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto, RegisterDto } from '../users/dto/create-email-auth.dto';
-import { InstallationsService } from '../installations/installations.service';
+import { JwtService } from '@nestjs/jwt';
+import { Req } from '@nestjs/common';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly installationsService: InstallationsService,
+    private readonly jwtService: JwtService,
   ) {}
 
   @Post('login')
@@ -77,14 +78,11 @@ export class AuthController {
   @Get('github')
   @ApiOperation({ summary: 'Initiate GitHub OAuth flow' })
   @ApiQuery({ name: 'state', required: false, description: 'OAuth state parameter' })
-  @ApiQuery({ name: 'emailAuthId', required: false, description: 'EmailAuth ID for linking' })
   async githubAuth(
     @Query('state') state?: string,
-    @Query('emailAuthId') emailAuthId?: string,
     @Res() res?: Response,
   ) {
-    // Include emailAuthId in state if provided
-    const stateParam = emailAuthId ? `emailAuthId:${emailAuthId}` : (state || '');
+    const stateParam = state || '';
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=repo,user:email&state=${stateParam}`;
     if (res) {
       console.log('redirecting to', githubAuthUrl);
@@ -101,16 +99,38 @@ export class AuthController {
   async githubCallback(
     @Query('code') code: string,
     @Query('state') state?: string,
+    @Req() req?: Request,
     @Res() res?: Response,
   ) {
     try {
-      // Extract emailAuthId from state if present
+      // Extract mode from state parameter
+      let mode: 'login' | 'connect' = 'login';
       let emailAuthId: string | undefined;
-      if (state && state.startsWith('emailAuthId:')) {
-        emailAuthId = state.replace('emailAuthId:', '');
+      
+      if (state && state.startsWith('mode:')) {
+        mode = state.replace('mode:', '') as 'login' | 'connect';
       }
 
-      const result = await this.authService.validateGithubCode(code, emailAuthId);
+      // If mode is "connect", extract emailAuthId from current session cookie
+      if (mode === 'connect' && req) {
+        const token = req.cookies?.monkci_token;
+        if (token) {
+          try {
+            const decoded = this.jwtService.decode(token) as any;
+            if (decoded && decoded.emailAuthId) {
+              emailAuthId = decoded.emailAuthId;
+            }
+          } catch (e) {
+            console.error('Failed to decode token for connect mode:', e);
+          }
+        }
+        
+        if (!emailAuthId) {
+          throw new UnauthorizedException('No email authentication session found. Please log in with email first.');
+        }
+      }
+
+      const result = await this.authService.validateGithubCode(code, mode, emailAuthId);
       
       if (res) {
         // Set JWT token as httpOnly cookie
@@ -181,10 +201,17 @@ export class AuthController {
   async getCurrentUser(@CurrentUser() user: any) {
     console.log('Auth Controller - getCurrentUser called with user:', user ? 'User exists' : 'No user');
     
-    if (user?.userId) {
-        const installations = await this.installationsService.findByUserId(user.userId);
-        console.log('Auth Controller - installations:', installations);
+    // Installations are now included in JWT token from login, no need to fetch from database
+    // If installations are not in token, fetch from GitHub API
+    if (user?.userId && (!user.installations || user.installations.length === 0)) {
+      try {
+        const installations = await this.authService.getUserInstallations(user.userId);
+        console.log('Auth Controller - fetched installations from GitHub:', installations);
         user.installations = installations;
+      } catch (error) {
+        console.warn('Auth Controller - Failed to fetch installations:', error);
+        user.installations = [];
+      }
     }
     return user;
   }

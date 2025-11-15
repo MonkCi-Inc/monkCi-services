@@ -1,8 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import { InstallationsService } from '../installations/installations.service';
-import { RepositoriesService } from '../repositories/repositories.service';
 import { GitHubService } from '../github/github.service';
 import { EmailAuthService } from '../users/email-auth.service';
 
@@ -10,8 +8,6 @@ import { EmailAuthService } from '../users/email-auth.service';
 export class AuthService {
   constructor(
     private usersService: UsersService,
-    private installationsService: InstallationsService,
-    private repositoriesService: RepositoriesService,
     private githubService: GitHubService,
     private emailAuthService: EmailAuthService,
     private jwtService: JwtService,
@@ -25,27 +21,12 @@ export class AuthService {
         throw new UnauthorizedException('Invalid email or password');
       }
 
-      // Check if linked to User
-      let user = null;
-      let hasGitHubLinked = false;
-      if (emailAuth.userId) {
-        user = await this.usersService.findOne(emailAuth.userId.toString());
-        hasGitHubLinked = !!user;
-      }
-
-      // Create JWT payload
+      // Create JWT payload - only include email auth data, not GitHub data
       const payload: any = {
         emailAuthId: emailAuth['id'].toString(),
         email: emailAuth.email,
         name: emailAuth.name,
       };
-
-      if (user) {
-        payload.userId = user['id'].toString();
-        payload.githubId = user.githubId;
-        payload.login = user.login;
-        payload.avatarUrl = user.avatarUrl;
-      }
 
       const token = this.jwtService.sign(payload);
 
@@ -56,15 +37,8 @@ export class AuthService {
           email: emailAuth.email,
           name: emailAuth.name,
         },
-        user: user ? {
-          id: user['id'],
-          githubId: user.githubId,
-          login: user.login,
-          name: user.name,
-          email: user.email,
-          avatarUrl: user.avatarUrl,
-        } : null,
-        hasGitHubLinked,
+        user: null,
+        hasGitHubLinked: false,
       };
     } catch (error) {
       console.log('error in loginWithEmailPassword', error);
@@ -106,7 +80,7 @@ export class AuthService {
     }
   }
 
-  async validateGithubCode(code: string, emailAuthId?: string) {
+  async validateGithubCode(code: string, mode: 'login' | 'connect' = 'login', emailAuthId?: string) {
     try {
       // Check for required environment variables
       if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
@@ -130,23 +104,35 @@ export class AuthService {
       
       // Get user's repositories using GitHubService
       const userRepositories = await this.githubService.getUserRepositories(accessToken, userData.repos_url);
+
+      // Check if user exists in database
+      let user = await this.usersService.findByGithubId(userData.id);
       
-      // If emailAuthId is provided, this is an email user linking GitHub
+      console.log('🔍 GitHub Login - Checking if user exists:', {
+        githubId: userData.id,
+        login: userData.login,
+        userFound: !!user,
+        mode: mode
+      });
+      // If mode is "connect", link GitHub account to email auth
       let emailAuth = null;
-      if (emailAuthId) {
+      if (mode === 'connect' && emailAuthId) {
         emailAuth = await this.emailAuthService.findById(emailAuthId);
         if (!emailAuth) {
           throw new UnauthorizedException('EmailAuth not found');
         }
       }
 
-      // Check if user exists in database
-      let user = await this.usersService.findByGithubId(userData.id);
-
       if (user) {
         // Update existing user
-        // If emailAuth is provided, link it to this user
-        if (emailAuth && !user.emailAuthId) {
+        console.log('✅ GitHub Login - User EXISTS, UPDATING user record:', {
+          userId: user['id'],
+          emailAuthId: emailAuth ? emailAuth['id'] : null,
+          emailAuthExists: !!emailAuth,
+          emailAuthLinked: !!user.emailAuthId
+        });
+        // If mode is "connect", link email auth to this user
+        if (mode === 'connect' && emailAuth && !user.emailAuthId) {
           await this.usersService.linkEmailAuth(user['id'].toString(), emailAuth._id.toString());
           await this.emailAuthService.linkToUser(emailAuth._id.toString(), user['id'].toString());
           user = await this.usersService.findOne(user['id'].toString());
@@ -227,66 +213,65 @@ export class AuthService {
           updatedAt: userData.updated_at,
         };
 
-        // If emailAuth is provided, link it to the new user
-        if (emailAuth) {
+        // If mode is "connect", link email auth to the new user
+        if (mode === 'connect' && emailAuth) {
           createUserDto.emailAuthId = emailAuth['id'];
         }
 
         user = await this.usersService.create(createUserDto);
 
-        // Link EmailAuth to User bidirectionally
-        if (emailAuth) {
+        // Link EmailAuth to User bidirectionally if connect mode
+        if (mode === 'connect' && emailAuth) {
           await this.emailAuthService.linkToUser(emailAuth['id'].toString(), user['id'].toString());
         }
       }
 
-      // Sync user repositories
-      await this.syncUserRepositories(user['id'].toString(), userRepositories);
-
-      // Get user's installations using GitHubService
+      // Get user's installations using GitHubService (no database storage)
       const installations = await this.githubService.getAllInstallations(accessToken);
-
       console.log('installations', installations);
 
-      // Process each installation
-      const processedInstallations = [];
-      for (const installation of installations) {
-        
-        let dbInstallation = await this.installationsService.findByInstallationId(
-          installation.id,
-        );
+      // Format installations for response (no database operations)
+      const processedInstallations = installations.map((installation) => ({
+        id: installation.id,
+        accountLogin: installation.account.login,
+        accountType: installation.account.type,
+        permissions: installation.permissions,
+        repositorySelection: installation.repository_selection,
+        appSlug: installation.app_slug,
+      }));
 
-        if (dbInstallation) {
-          // Update existing installation
-          dbInstallation = await this.installationsService.updateByInstallationId(
-            installation.id,
-            {
-              accountLogin: installation.account.login,
-              accountType: installation.account.type,
-              permissions: installation.permissions,
-              repositorySelection: installation.repository_selection,
-            },
-          );
-        } else {
-          // Create new installation
-          dbInstallation = await this.installationsService.create({
-            installationId: installation.id,
-            userId: user['id'].toString(),
-            accountLogin: installation.account.login,
-            accountType: installation.account.type,
-            permissions: installation.permissions,
-            repositorySelection: installation.repository_selection,
-          });
-        }
+      // If mode is "connect", return email auth JWT (don't switch login method)
+      if (mode === 'connect' && emailAuth) {
+        // Create email auth JWT payload with GitHub data included
+        const emailPayload: any = {
+          emailAuthId: emailAuth['id'].toString(),
+          email: emailAuth.email,
+          name: emailAuth.name,
+          // Include GitHub data so UI knows GitHub is connected
+          userId: user['id'].toString(),
+          githubId: user.githubId,
+          login: user.login,
+          avatarUrl: user.avatarUrl,
+          installations: processedInstallations,
+        };
 
-        if (dbInstallation) {
-          processedInstallations.push(dbInstallation);
-          // Sync repositories for this installation using GitHubService
-          await this.syncRepositoriesForInstallation(dbInstallation);
-        }
+        const emailToken = this.jwtService.sign(emailPayload);
+
+        return {
+          access_token: emailToken,
+          user: {
+            id: user['id'],
+            githubId: user.githubId,
+            login: user.login,
+            name: user.name,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+          },
+          installations: processedInstallations,
+        };
       }
 
-      // Create JWT token
+      // Normal login mode - return GitHub JWT
       const payload: any = {
         userId: user['id'].toString(),
         githubId: user.githubId,
@@ -294,16 +279,10 @@ export class AuthService {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
-        installations: processedInstallations.map((inst) => ({
-          id: inst.installationId,
-          accountLogin: inst.accountLogin,
-          accountType: inst.accountType,
-          permissions: inst.permissions,
-          repositorySelection: inst.repositorySelection,
-        })),
+        installations: processedInstallations,
       };
 
-      // Include emailAuthId if linked
+      // Include emailAuthId if linked (for users who connected GitHub after email login)
       if (user.emailAuthId) {
         payload.emailAuthId = user.emailAuthId.toString();
       }
@@ -337,16 +316,14 @@ export class AuthService {
 
   async generateInstallationToken(installationId: number, userId: string) {
     try {
-      // Verify user has access to this installation
-      const installation = await this.installationsService.findByInstallationId(
-        installationId,
-      );
-
-      if (!installation || installation.userId.toString() !== userId) {
-        throw new UnauthorizedException('Access denied to this installation');
+      // Get user to verify they exist
+      const user = await this.usersService.findOne(userId);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
       }
 
       // Get installation access token using GitHubService
+      // No need to verify from database - GitHub API will handle authorization
       const octokit = await this.githubService.getInstallationOctokit(installationId);
       
       // The octokit instance is already authenticated for this installation
@@ -354,130 +331,26 @@ export class AuthService {
       return {
         installation_id: installationId,
         octokit_authenticated: true,
-        permissions: installation.permissions,
       };
     } catch (error) {
       throw new UnauthorizedException('Failed to generate installation token: ' + error.message);
     }
   }
 
-  async syncRepositoriesForInstallation(installation: any) {
-    try {
-      console.log(`Auth Service - Starting repository sync for installation ${installation.installationId}`);
-      
-      // Get repositories using GitHubService with Octokit
-      const repositories = await this.githubService.getInstallationRepositories(installation.installationId);
-      console.log(`Auth Service - Found ${repositories.length} repositories for installation ${installation.installationId}`);
-
-      for (const repo of repositories) {
-        console.log(`Auth Service - Syncing repository: ${repo.full_name} (ID: ${repo.id})`);
-        
-        try {
-          await this.repositoriesService.upsertRepository({
-            repositoryId: repo.id,
-            installationId: installation._id.toString(),
-            userId: installation.userId.toString(),
-            name: repo.name,
-            fullName: repo.full_name,
-            private: repo.private,
-            description: repo.description,
-            defaultBranch: repo.default_branch,
-            language: repo.language,
-            topics: repo.topics || [],
-            archived: repo.archived,
-            disabled: repo.disabled,
-            fork: repo.fork,
-            size: repo.size,
-            stargazersCount: repo.stargazers_count,
-            watchersCount: repo.watchers_count,
-            forksCount: repo.forks_count,
-            openIssuesCount: repo.open_issues_count,
-            createdAt: repo.created_at,
-            updatedAt: repo.updated_at,
-            pushedAt: repo.pushed_at,
-          });
-          console.log(`Auth Service - Successfully synced repository: ${repo.full_name}`);
-        } catch (repoError) {
-          console.error(`Auth Service - Failed to sync repository ${repo.full_name}:`, repoError);
-        }
-      }
-      
-      console.log(`Auth Service - Completed repository sync for installation ${installation.installationId}`);
-    } catch (error) {
-      console.error(`Failed to sync repositories for installation ${installation.installationId}:`, error);
-    }
-  }
-
-  async syncUserRepositories(userId: string, repositories: any[]) {
-    try {
-      console.log(`Auth Service - Starting to sync ${repositories.length} user repositories`);
-      
-      for (const repo of repositories) {
-        console.log(`Auth Service - Syncing user repository: ${repo.full_name} (ID: ${repo.id})`);
-        
-        try {
-          await this.repositoriesService.upsertRepository({
-            repositoryId: repo.id,
-            userId: userId,
-            name: repo.name,
-            fullName: repo.full_name,
-            private: repo.private,
-            description: repo.description,
-            defaultBranch: repo.default_branch,
-            language: repo.language,
-            topics: repo.topics || [],
-            archived: repo.archived,
-            disabled: repo.disabled,
-            fork: repo.fork,
-            size: repo.size,
-            stargazersCount: repo.stargazers_count,
-            watchersCount: repo.watchers_count,
-            forksCount: repo.forks_count,
-            openIssuesCount: repo.open_issues_count,
-            createdAt: repo.created_at,
-            updatedAt: repo.updated_at,
-            pushedAt: repo.pushed_at,
-            // Additional GitHub repository data
-            nodeId: repo.node_id,
-            htmlUrl: repo.html_url,
-            url: repo.url,
-            gitUrl: repo.git_url,
-            sshUrl: repo.ssh_url,
-            cloneUrl: repo.clone_url,
-            svnUrl: repo.svn_url,
-            homepage: repo.homepage,
-            hasIssues: repo.has_issues,
-            hasProjects: repo.has_projects,
-            hasDownloads: repo.has_downloads,
-            hasWiki: repo.has_wiki,
-            hasPages: repo.has_pages,
-            hasDiscussions: repo.has_discussions,
-            mirrorUrl: repo.mirror_url,
-            allowForking: repo.allow_forking,
-            isTemplate: repo.is_template,
-            webCommitSignoffRequired: repo.web_commit_signoff_required,
-            visibility: repo.visibility,
-            license: repo.license,
-            permissions: repo.permissions,
-            owner: repo.owner,
-          });
-          console.log(`Auth Service - Successfully synced user repository: ${repo.full_name}`);
-        } catch (repoError) {
-          console.error(`Auth Service - Failed to sync user repository ${repo.full_name}:`, repoError);
-        }
-      }
-      
-      console.log(`Auth Service - Completed user repository sync`);
-    } catch (error) {
-      console.error(`Failed to sync user repositories:`, error);
-    }
-  }
+  // Removed database sync methods - repositories are fetched directly from GitHub API
 
   async getInstallationOctokit(installationId: number, userId: string): Promise<any> {
-    // Verify user has access to this installation
-    const installation = await this.installationsService.findByInstallationId(installationId);
+    // Get user to verify they exist
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify user has access to this installation by checking their installations
+    const userInstallations = await this.getUserInstallations(userId);
+    const hasAccess = userInstallations.some(inst => inst.id === installationId);
     
-    if (!installation || installation.userId.toString() !== userId) {
+    if (!hasAccess) {
       throw new UnauthorizedException('Access denied to this installation');
     }
 
@@ -487,6 +360,160 @@ export class AuthService {
 
   async getUserWithToken(userId: string) {
     return this.usersService.findOne(userId);
+  }
+
+  // Get installations for a user using their stored accessToken (no database storage)
+  async getUserInstallations(userId: string) {
+    try {
+      // Get user to access their accessToken
+      const user = await this.usersService.findOne(userId);
+      if (!user || !user.accessToken) {
+        throw new UnauthorizedException('User not found or no GitHub access token available');
+      }
+
+      // Get fresh installations from GitHub API
+      const installations = await this.githubService.getAllInstallations(user.accessToken);
+      console.log('Auth Service - Fetched installations from GitHub, found:', installations.length);
+
+      // Format installations for response (no database operations)
+      const processedInstallations = installations.map((installation) => ({
+        id: installation.id,
+        accountLogin: installation.account.login,
+        accountType: installation.account.type,
+        permissions: installation.permissions,
+        repositorySelection: installation.repository_selection,
+        appSlug: installation.app_slug,
+      }));
+
+      return processedInstallations;
+    } catch (error) {
+      console.error('Auth Service - Failed to fetch installations:', error);
+      throw new UnauthorizedException('Failed to fetch installations: ' + error.message);
+    }
+  }
+
+  // Get a single installation by GitHub installation ID (no database storage)
+  async getUserInstallationById(userId: string, installationId: number) {
+    try {
+      // Get all installations for the user
+      const allInstallations = await this.getUserInstallations(userId);
+      
+      // Find the installation with matching ID
+      const installation = allInstallations.find(inst => inst.id === installationId);
+      
+      if (!installation) {
+        throw new UnauthorizedException('Installation not found or access denied');
+      }
+
+      return installation;
+    } catch (error) {
+      console.error('Auth Service - Failed to fetch installation:', error);
+      throw new UnauthorizedException('Failed to fetch installation: ' + error.message);
+    }
+  }
+
+  // Get repositories for installations (no database storage)
+  async getUserRepositories(userId: string, installationId?: number) {
+    try {
+      // Get user to access their accessToken
+      const user = await this.usersService.findOne(userId);
+      if (!user || !user.accessToken) {
+        throw new UnauthorizedException('User not found or no GitHub access token available');
+      }
+
+      // Get user's installations
+      const installations = await this.getUserInstallations(userId);
+      
+      // If installationId is specified, get repositories for that installation only
+      if (installationId) {
+        const installation = installations.find(inst => inst.id === installationId);
+        if (!installation) {
+          throw new UnauthorizedException('Installation not found or access denied');
+        }
+        const repositories = await this.githubService.getInstallationRepositories(installationId);
+        return repositories.map(repo => ({
+          id: repo.id,
+          name: repo.name,
+          fullName: repo.full_name,
+          private: repo.private,
+          description: repo.description,
+          defaultBranch: repo.default_branch,
+          language: repo.language,
+          topics: repo.topics || [],
+          archived: repo.archived,
+          disabled: repo.disabled,
+          fork: repo.fork,
+          size: repo.size,
+          stargazersCount: repo.stargazers_count,
+          watchersCount: repo.watchers_count,
+          forksCount: repo.forks_count,
+          openIssuesCount: repo.open_issues_count,
+          createdAt: repo.created_at,
+          updatedAt: repo.updated_at,
+          pushedAt: repo.pushed_at,
+          installationId: installationId,
+        }));
+      }
+
+      // Get repositories for all installations
+      const allRepositories = [];
+      for (const installation of installations) {
+        try {
+          const repositories = await this.githubService.getInstallationRepositories(installation.id);
+          const formattedRepos = repositories.map(repo => ({
+            id: repo.id,
+            name: repo.name,
+            fullName: repo.full_name,
+            private: repo.private,
+            description: repo.description,
+            defaultBranch: repo.default_branch,
+            language: repo.language,
+            topics: repo.topics || [],
+            archived: repo.archived,
+            disabled: repo.disabled,
+            fork: repo.fork,
+            size: repo.size,
+            stargazersCount: repo.stargazers_count,
+            watchersCount: repo.watchers_count,
+            forksCount: repo.forks_count,
+            openIssuesCount: repo.open_issues_count,
+            createdAt: repo.created_at,
+            updatedAt: repo.updated_at,
+            pushedAt: repo.pushed_at,
+            installationId: installation.id,
+          }));
+          allRepositories.push(...formattedRepos);
+        } catch (error) {
+          console.error(`Failed to fetch repositories for installation ${installation.id}:`, error);
+          // Continue with other installations
+        }
+      }
+
+      return allRepositories;
+    } catch (error) {
+      console.error('Auth Service - Failed to fetch repositories:', error);
+      throw new UnauthorizedException('Failed to fetch repositories: ' + error.message);
+    }
+  }
+
+  // Get a single repository by GitHub repository ID (no database storage)
+  async getUserRepositoryById(userId: string, repositoryId: number) {
+    try {
+      // Get all repositories for the user
+      const allRepositories = await this.getUserRepositories(userId);
+      
+      // Find the repository with matching ID
+      const repository = allRepositories.find(repo => repo.id === repositoryId);
+      
+      if (!repository) {
+        throw new UnauthorizedException('Repository not found or access denied');
+      }
+
+      return repository;
+    } catch (error) {
+      console.error('Auth Service - Failed to fetch repository:', error);
+      throw new UnauthorizedException('Failed to fetch repository: ' + error.message);
+    }
   }
 
   // Make githubService accessible for debugging

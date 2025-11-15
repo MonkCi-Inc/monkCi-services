@@ -15,46 +15,34 @@ import {
   Eye,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { apiService, Installation, Repository } from "@/lib/api";
+import { useEffect } from "react";
+import { Installation, Repository } from "@/lib/api";
+import { useInstallations, useRepositories } from "@/lib/queries";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [installations, setInstallations] = useState<Installation[]>([]);
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Use TanStack Query hooks - data is cached and shared across pages
+  const { data: installations = [], isLoading: installationsLoading } = useInstallations();
+  const { data: repositories = [], isLoading: repositoriesLoading } = useRepositories();
+  
+  const loading = installationsLoading || repositoriesLoading;
 
   useEffect(() => {
-    // Load dashboard data
-    const loadDashboardData = async () => {
-      try {
-        // Load installations from the API
-        console.log('Dashboard - Loading installations...');
-        const installationsData = await apiService.getInstallations();
-        console.log('Dashboard - Installations loaded:', installationsData);
-        setInstallations(installationsData);
-
-        // Load repositories from the API
-        console.log('Dashboard - Loading repositories...');
-        const repositoriesData = await apiService.getRepositories();
-        console.log('Dashboard - Repositories loaded:', repositoriesData);
-        setRepositories(repositoriesData);
-      } catch (error) {
-        console.error('Dashboard data load failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
+    // Clear OAuth mode from localStorage after redirect (if present)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('githubOAuthMode');
+    }
   }, []);
 
   const handleInstallationClick = (installation: Installation) => {
-    router.push(`/dashboard/installation/${installation._id}`);
+    // Use installation ID directly (no database _id)
+    router.push(`/dashboard/installation/${installation.id}`);
   };
 
   const handleRepositoryClick = (repository: Repository) => {
-    router.push(`/dashboard/repository/${repository._id}`);
+    // Use repository ID directly (no database _id)
+    router.push(`/dashboard/repository/${repository.id}`);
   };
 
   const handleInstallMonkCI = () => {
@@ -113,7 +101,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {installations.map((installation) => (
               <Card 
-                key={installation._id}
+                key={installation.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => handleInstallationClick(installation)}
               >
@@ -192,7 +180,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {repositories.map((repository) => (
               <Card 
-                key={repository._id}
+                key={repository.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => handleRepositoryClick(repository)}
               >

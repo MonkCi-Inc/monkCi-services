@@ -91,8 +91,15 @@ class AuthService {
   }
 
   // Redirect to GitHub OAuth
-  initiateGitHubAuth(emailAuthId?: string): void {
-    const authUrl = `${API_BASE_URL}/auth/github${emailAuthId ? `?emailAuthId=${emailAuthId}` : ''}`;
+  // mode: 'login' for login flow, 'connect' for connecting GitHub to existing email account
+  initiateGitHubAuth(mode: 'login' | 'connect' = 'login'): void {
+    // Store OAuth mode in localStorage so callback page can clear it
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('githubOAuthMode', mode);
+    }
+    // Pass mode in state parameter so backend knows the intention
+    const state = `mode:${mode}`;
+    const authUrl = `${API_BASE_URL}/auth/github?state=${encodeURIComponent(state)}`;
     window.location.href = authUrl;
   }
 

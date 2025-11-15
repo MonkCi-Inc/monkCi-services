@@ -37,7 +37,7 @@ export default function SignInPage() {
   }, [router]);
 
   const handleGitHubSignIn = () => {
-    authService.initiateGitHubAuth();
+    authService.initiateGitHubAuth('login');
   };
 
   const handleEmailPasswordSubmit = async (e: React.FormEvent) => {

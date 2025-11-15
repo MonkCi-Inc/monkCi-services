@@ -15,53 +15,30 @@ import {
   RefreshCw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { apiService, Repository, Installation } from "@/lib/api";
+import { Repository, Installation } from "@/lib/api";
+import { useInstallation, useRepositories, useRefreshRepositories } from "@/lib/queries";
 
 export default function InstallationPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [installation, setInstallation] = useState<Installation | null>(null);
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchInstallationData = async () => {
-      try {
-        // Get installation details
-        const installationData = await apiService.getInstallation(params.id);
-        setInstallation(installationData);
-        
-        // Get repositories for this installation
-        const reposData = await apiService.getRepositories(params.id);
-        setRepositories(reposData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInstallationData();
-  }, [params.id]);
+  
+  // Use TanStack Query hooks - data is cached and shared across pages
+  const { data: installation, isLoading: installationLoading, error: installationError } = useInstallation(params.id);
+  const { data: repositories = [], isLoading: repositoriesLoading } = useRepositories(params.id);
+  const refreshRepositories = useRefreshRepositories();
+  
+  const loading = installationLoading || repositoriesLoading;
+  const error = installationError ? (installationError instanceof Error ? installationError.message : 'An error occurred') : null;
+  const syncing = refreshRepositories.isPending;
 
   const handleBack = () => {
     router.push('/dashboard');
   };
 
   const handleSync = async () => {
-    setSyncing(true);
     try {
-      await apiService.syncRepositories(params.id);
-      
-      // Refresh repositories after sync
-      const reposData = await apiService.getRepositories(params.id);
-      setRepositories(reposData);
+      await refreshRepositories.mutateAsync(params.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sync failed');
-    } finally {
-      setSyncing(false);
+      console.error('Refresh failed:', err);
     }
   };
 
@@ -167,7 +144,7 @@ export default function InstallationPage({ params }: { params: { id: string } })
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {repositories.map((repo) => (
-              <Card key={repo._id} className="hover:shadow-lg transition-shadow">
+              <Card key={repo.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>

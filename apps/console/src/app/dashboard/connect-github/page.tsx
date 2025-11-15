@@ -14,7 +14,6 @@ export default function ConnectGitHubPage() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [emailAuthId, setEmailAuthId] = useState<string | null>(null);
 
   useEffect(() => {
     // Load user data
@@ -22,29 +21,6 @@ export default function ConnectGitHubPage() {
       try {
         const userData = await authService.getCurrentUser();
         setUser(userData);
-        
-        // Get emailAuthId from user object
-        if (userData.emailAuthId) {
-          setEmailAuthId(userData.emailAuthId);
-        } else {
-          // Fallback: Extract from JWT token
-          const token = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('monkci_token='))
-            ?.split('=')[1];
-          
-          if (token) {
-            try {
-              // Decode JWT to get emailAuthId
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              if (payload.emailAuthId) {
-                setEmailAuthId(payload.emailAuthId);
-              }
-            } catch (e) {
-              console.error('Failed to decode token:', e);
-            }
-          }
-        }
       } catch (error) {
         console.error('Failed to get user:', error);
         // If user is not authenticated, redirect to signin
@@ -59,12 +35,7 @@ export default function ConnectGitHubPage() {
 
   const handleConnectGitHub = () => {
     setConnecting(true);
-    if (emailAuthId) {
-      authService.initiateGitHubAuth(emailAuthId);
-    } else {
-      // Fallback: try without emailAuthId
-      authService.initiateGitHubAuth();
-    }
+    authService.initiateGitHubAuth('connect');
   };
 
   const isConnected = user?.githubId && user?.login;

@@ -3,8 +3,7 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/
 
 console.log('API_BASE_URL in api', API_BASE_URL);
 export interface Repository {
-  _id: string;
-  repositoryId: number;
+  id: number; // GitHub repository ID (no _id from database)
   name: string;
   fullName: string;
   private: boolean;
@@ -23,18 +22,16 @@ export interface Repository {
   createdAt: string;
   updatedAt: string;
   pushedAt: string;
-  lastSyncAt: string;
+  installationId?: number; // GitHub installation ID this repo belongs to
 }
 
 export interface Installation {
-  _id: string;
-  installationId: number;
+  id: number; // GitHub installation ID (no _id from database)
   accountLogin: string;
   accountType: 'User' | 'Organization';
   permissions: Record<string, string>;
   repositorySelection: 'all' | 'selected';
-  createdAt: string;
-  updatedAt: string;
+  appSlug?: string;
 }
 
 export interface Runner {
@@ -111,6 +108,8 @@ class ApiService {
   async getInstallation(id: string): Promise<Installation> {
     return this.request<Installation>(`installations/${id}`);
   }
+
+  // Removed syncInstallations - installations are now fetched directly from GitHub API
 
   // Repositories
   async getRepositories(installationId?: string): Promise<Repository[]> {

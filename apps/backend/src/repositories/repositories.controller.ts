@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { GitHubService } from '../github/github.service';
 import { InstallationsService } from '../installations/installations.service';
+import { AuthService } from '../auth/auth.service';
 
 @ApiTags('repositories')
 @Controller('repositories')
@@ -24,6 +25,7 @@ export class RepositoriesController {
     private readonly repositoriesService: RepositoriesService,
     private readonly githubService: GitHubService,
     private readonly installationsService: InstallationsService,
+    private readonly authService: AuthService,
   ) {}
 
   @Post()
@@ -38,23 +40,34 @@ export class RepositoriesController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all repositories' })
+  @ApiOperation({ summary: 'Get all repositories from GitHub API' })
   @ApiQuery({ name: 'installationId', required: false, description: 'Filter by installation ID' })
-  @ApiResponse({ status: 200, description: 'Return all repositories.' })
-  findAll(@Query('installationId') installationId?: string) {
-    if (installationId) {
-      return this.repositoriesService.findByInstallationId(installationId);
+  @ApiResponse({ status: 200, description: 'Return all repositories from GitHub.' })
+  async findAll(@CurrentUser() user: any, @Query('installationId') installationId?: string) {
+    if (!user.userId) {
+      throw new Error('User ID not found in token. Please ensure you are logged in with GitHub.');
     }
-    return this.repositoriesService.findAll();
+    // Fetch directly from GitHub API (no database)
+    const installationIdNum = installationId ? parseInt(installationId) : undefined;
+    return this.authService.getUserRepositories(user.userId, installationIdNum);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get a repository by id' })
-  @ApiResponse({ status: 200, description: 'Return the repository.' })
-  findOne(@Param('id') id: string) {
-    return this.repositoriesService.findOne(id);
+  @ApiOperation({ summary: 'Get a repository by GitHub repository ID' })
+  @ApiResponse({ status: 200, description: 'Return the repository from GitHub API.' })
+  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
+    if (!user.userId) {
+      throw new Error('User ID not found in token. Please ensure you are logged in with GitHub.');
+    }
+    // ID is now a GitHub repository ID (number), not MongoDB ObjectId
+    const repositoryId = parseInt(id);
+    if (isNaN(repositoryId)) {
+      throw new Error('Invalid repository ID. Must be a GitHub repository ID (number).');
+    }
+    // Fetch directly from GitHub API (no database)
+    return this.authService.getUserRepositoryById(user.userId, repositoryId);
   }
 
   @Patch(':id')
@@ -107,22 +120,29 @@ export class RepositoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get GitHub Actions runners for a repository' })
   @ApiResponse({ status: 200, description: 'Return the repository runners.' })
-  async getRepositoryRunners(@Param('id') id: string) {
-    const repository = await this.repositoriesService.findOne(id);
+  async getRepositoryRunners(@CurrentUser() user: any, @Param('id') id: string) {
+    if (!user.userId) {
+      throw new Error('User ID not found in token. Please ensure you are logged in with GitHub.');
+    }
+    // ID is now a GitHub repository ID (number), not MongoDB ObjectId
+    const repositoryId = parseInt(id);
+    if (isNaN(repositoryId)) {
+      throw new Error('Invalid repository ID. Must be a GitHub repository ID (number).');
+    }
+    
+    // Fetch repository from GitHub API
+    const repository = await this.authService.getUserRepositoryById(user.userId, repositoryId);
     
     if (!repository.installationId) {
       return { runners: [], message: 'Repository not associated with an installation' };
     }
-
-    // The installation is already populated, so we can use it directly
-    const installation = repository.installationId as any;
     
     // Extract owner and repo from fullName
     const [owner, repo] = repository.fullName.split('/');
     
     try {
       const runners = await this.githubService.getRepositoryRunners(
-        installation.installationId,
+        repository.installationId,
         owner,
         repo
       );
@@ -138,22 +158,29 @@ export class RepositoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get GitHub Actions workflows for a repository' })
   @ApiResponse({ status: 200, description: 'Return the repository workflows.' })
-  async getRepositoryWorkflows(@Param('id') id: string) {
-    const repository = await this.repositoriesService.findOne(id);
+  async getRepositoryWorkflows(@CurrentUser() user: any, @Param('id') id: string) {
+    if (!user.userId) {
+      throw new Error('User ID not found in token. Please ensure you are logged in with GitHub.');
+    }
+    // ID is now a GitHub repository ID (number), not MongoDB ObjectId
+    const repositoryId = parseInt(id);
+    if (isNaN(repositoryId)) {
+      throw new Error('Invalid repository ID. Must be a GitHub repository ID (number).');
+    }
+    
+    // Fetch repository from GitHub API
+    const repository = await this.authService.getUserRepositoryById(user.userId, repositoryId);
     
     if (!repository.installationId) {
       return { workflows: [], message: 'Repository not associated with an installation' };
     }
-
-    // The installation is already populated, so we can use it directly
-    const installation = repository.installationId as any;
     
     // Extract owner and repo from fullName
     const [owner, repo] = repository.fullName.split('/');
     
     try {
       const workflows = await this.githubService.getRepositoryWorkflows(
-        installation.installationId,
+        repository.installationId,
         owner,
         repo
       );
@@ -169,22 +196,29 @@ export class RepositoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get GitHub Actions workflow runs for a specific workflow' })
   @ApiResponse({ status: 200, description: 'Return the workflow runs.' })
-  async getWorkflowRuns(@Param('id') id: string, @Param('workflowId') workflowId: string) {
-    const repository = await this.repositoriesService.findOne(id);
+  async getWorkflowRuns(@CurrentUser() user: any, @Param('id') id: string, @Param('workflowId') workflowId: string) {
+    if (!user.userId) {
+      throw new Error('User ID not found in token. Please ensure you are logged in with GitHub.');
+    }
+    // ID is now a GitHub repository ID (number), not MongoDB ObjectId
+    const repositoryId = parseInt(id);
+    if (isNaN(repositoryId)) {
+      throw new Error('Invalid repository ID. Must be a GitHub repository ID (number).');
+    }
+    
+    // Fetch repository from GitHub API
+    const repository = await this.authService.getUserRepositoryById(user.userId, repositoryId);
     
     if (!repository.installationId) {
       return { runs: [], message: 'Repository not associated with an installation' };
     }
-
-    // The installation is already populated, so we can use it directly
-    const installation = repository.installationId as any;
     
     // Extract owner and repo from fullName
     const [owner, repo] = repository.fullName.split('/');
     
     try {
       const runs = await this.githubService.getWorkflowRuns(
-        installation.installationId,
+        repository.installationId,
         owner,
         repo,
         parseInt(workflowId)
@@ -201,22 +235,29 @@ export class RepositoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get GitHub Actions workflow run logs for a specific run' })
   @ApiResponse({ status: 200, description: 'Return the workflow run logs.' })
-  async getWorkflowRunLogs(@Param('id') id: string, @Param('runId') runId: string) {
-    const repository = await this.repositoriesService.findOne(id);
+  async getWorkflowRunLogs(@CurrentUser() user: any, @Param('id') id: string, @Param('runId') runId: string) {
+    if (!user.userId) {
+      throw new Error('User ID not found in token. Please ensure you are logged in with GitHub.');
+    }
+    // ID is now a GitHub repository ID (number), not MongoDB ObjectId
+    const repositoryId = parseInt(id);
+    if (isNaN(repositoryId)) {
+      throw new Error('Invalid repository ID. Must be a GitHub repository ID (number).');
+    }
+    
+    // Fetch repository from GitHub API
+    const repository = await this.authService.getUserRepositoryById(user.userId, repositoryId);
     
     if (!repository.installationId) {
       return { logs: null, message: 'Repository not associated with an installation' };
     }
-
-    // The installation is already populated, so we can use it directly
-    const installation = repository.installationId as any;
     
     // Extract owner and repo from fullName
     const [owner, repo] = repository.fullName.split('/');
     
     try {
       const logs = await this.githubService.getWorkflowRunLogs(
-        installation.installationId,
+        repository.installationId,
         owner,
         repo,
         parseInt(runId)

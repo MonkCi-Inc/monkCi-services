@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -13,7 +13,7 @@ import { EmailAuthModule } from '../users/email-auth.module';
 @Module({
   imports: [
     UsersModule,
-    InstallationsModule,
+    forwardRef(() => InstallationsModule), // Use forwardRef to handle circular dependency
     RepositoriesModule,
     GitHubModule,
     EmailAuthModule,
